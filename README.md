@@ -96,9 +96,14 @@ dart run flutter_native_splash:create
 
 ### Android
 
-* `minSdk 23` (set in `platform_config/android/app/build.gradle`; if your
-  template reads `flutter.minSdkVersion`, add `flutter.minSdkVersion=23` to
-  `android/gradle.properties` instead).
+* `minSdk` is inherited from `flutter.minSdkVersion` (24 in Flutter 3.44), which
+  is above the 23 that geolocator and flutter_compass need — nothing to
+  configure.
+* There is exactly one app build script, `android/app/build.gradle.kts`, and it
+  takes `versionCode` / `versionName` from the Flutter Gradle Plugin
+  (`flutter.versionCode` / `flutter.versionName`). Do not add a Groovy
+  `build.gradle` beside it: Gradle prefers the Groovy file, and the old
+  `flutterVersionCode` / `flutterVersionName` properties no longer exist.
 * Permissions: `INTERNET`, `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`.
 * `<queries>` for `https`, `geo`, `google.navigation` and `tel`, so Directions,
   Map and Call can be handed to another app on Android 11+.

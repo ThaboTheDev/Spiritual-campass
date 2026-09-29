@@ -12,7 +12,7 @@ import 'coordinates.dart';
 /// final smoothed = smoother.push(headingFromSensor);
 /// ```
 class AngleSmoother {
-  AngleSmoother({this.alpha = 0.2, this.resetThresholdDeg = 90.0});
+  AngleSmoother({this.alpha = 0.2, this.resetThresholdDeg = 120.0});
 
   /// How far to move towards each new sample, 0 .. 1.
   ///
@@ -23,6 +23,10 @@ class AngleSmoother {
   /// When a sample is further away than this, the filter snaps to it instead of
   /// sweeping across. Stops the needle doing a slow full turn after the phone
   /// has been in a pocket or the screen has been off.
+  ///
+  /// The default is 120°: a genuine turn (even a quick one) still sweeps, and
+  /// only a near-reversal between two samples — a sensor gap, not a movement a
+  /// person can make — snaps.
   final double resetThresholdDeg;
 
   double? _value;

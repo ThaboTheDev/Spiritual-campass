@@ -27,6 +27,11 @@ echo "Applying platform config from $REPO_ROOT/platform_config → $TARGET"
 if [[ -d "$TARGET/android" ]]; then
   mkdir -p "$TARGET/android"
   cp -R "$REPO_ROOT/platform_config/android/." "$TARGET/android/"
+  # Gradle must see exactly one app build script. `cp -R` cannot delete, so a
+  # Groovy build.gradle left over from an older scaffold would survive next to
+  # build.gradle.kts — and Gradle would then use the Groovy one, which still
+  # references the removed `flutterVersionCode` / `flutterVersionName`.
+  rm -f "$TARGET/android/app/build.gradle"
   echo "  android/ updated"
 fi
 
