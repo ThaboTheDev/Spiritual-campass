@@ -28,7 +28,7 @@ android {
         // geolocator and flutter_compass need 23 or higher.
         // If your template uses `flutter.minSdkVersion`, add
         // `flutter.minSdkVersion=23` to android/gradle.properties instead.
-        minSdk = 23
+        minSdkVersion = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
