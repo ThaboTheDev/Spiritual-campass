@@ -148,11 +148,15 @@ void main() {
 
   group('field sanity', () {
     test('Ekuphumuleni readings are plausible', () {
+      // The expected values below are the 2026.0 figures quoted in the README
+      // (Ekuphumuleni -24.9 degrees), so the field is evaluated at 1 January
+      // 2026. Declination drifts about 0.25 degrees west per year, which is
+      // more than the tolerances here.
       final MagneticField field = Wmm2025.field(
         latitudeDeg: -29.07547,
         longitudeDeg: 27.62453,
         altitudeKm: 1.6,
-        when: DateTime.utc(2026, 6, 1),
+        when: DateTime.utc(2026, 1, 1),
       );
 
       expect(field.declinationDeg, closeTo(-24.89, 0.1));
