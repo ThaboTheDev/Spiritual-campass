@@ -74,7 +74,7 @@ class CompassScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               if (compass.needsCalibration && compass.isRunning) ...<Widget>[
-                InfoBanner(
+                const InfoBanner(
                   message: S.calibrateHint,
                   icon: Icons.screen_rotation_outlined,
                   color: AppColors.warning,
@@ -83,7 +83,7 @@ class CompassScreen extends ConsumerWidget {
               ],
 
               if (compass.status == CompassStatus.noSensor) ...<Widget>[
-                InfoBanner(
+                const InfoBanner(
                   message: S.noSensor,
                   icon: Icons.sensors_off_outlined,
                   color: AppColors.warning,
@@ -241,6 +241,9 @@ class CompassScreen extends ConsumerWidget {
       case SunFacing.right:
       case SunFacing.left:
         return Formatters.bearingWithCardinal(sun.azimuthDeg);
+      case SunFacing.unknown:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 
@@ -260,6 +263,9 @@ class CompassScreen extends ConsumerWidget {
         return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° right';
       case SunFacing.left:
         return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° left';
+      case SunFacing.unknown:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 }
