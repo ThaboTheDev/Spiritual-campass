@@ -1,0 +1,87 @@
+name: tshk_compass
+description: >-
+  TSHK Compass points the way to Ekuphumuleni, the spiritual capital, for
+  Abantwana Bobukhosi Bukamoya (amasosha). English and isiZulu, offline first.
+publish_to: "none"
+
+# versionName+versionCode: 1.0.0 (1)
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management.
+  flutter_riverpod: ^2.6.1
+
+  # Device sensors and location.
+  flutter_compass: ^0.8.1
+  geolocator: ^14.1.1
+
+  # Map.
+  flutter_map: ^8.3.2
+  latlong2: ^0.9.1
+  flutter_map_marker_cluster: ^8.2.2
+
+  # Outbound intents: directions, phone calls, attribution links.
+  url_launcher: ^6.3.2
+
+  # Persisted manual location and locked msamo direction.
+  shared_preferences: ^2.5.5
+
+  # Serif titles + IBM Plex body and monospace.
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  # Run `dart run flutter_launcher_icons` and `dart run flutter_native_splash:create`.
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
+    - assets/centres.json
+
+# ---------------------------------------------------------------------------
+# Launcher icon: `dart run flutter_launcher_icons`
+# Replace assets/logo.png with the official crest before generating.
+# ---------------------------------------------------------------------------
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/logo.png"
+  min_sdk_android: 23
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0f131c"
+  adaptive_icon_foreground: "assets/logo.png"
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
+
+# ---------------------------------------------------------------------------
+# Native splash: `dart run flutter_native_splash:create`
+# ---------------------------------------------------------------------------
+flutter_native_splash:
+  color: "#0f131c"
+  image: "assets/logo.png"
+  android: true
+  ios: true
+  web: false
+  color_dark: "#0f131c"
+  image_dark: "assets/logo.png"
+  android_12:
+    color: "#0f131c"
+    image: "assets/logo.png"
