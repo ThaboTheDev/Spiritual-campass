@@ -1,0 +1,108 @@
+{
+  "_readme": [
+    "Centres (izikhungo) for the TSHK Compass Centres tab.",
+    "Edit this file to add, rename or move a centre - no code change is needed.",
+    "Fields per centre:",
+    "  id       : unique string, used as a stable key (required)",
+    "  name     : display name (required)",
+    "  region   : group heading, e.g. \"Gauteng\" (required; defaults to \"Other\")",
+    "  address  : street address, shown on the card and sent to the maps app",
+    "  town     : optional suburb/town, improves the search when present",
+    "  phone    : international format, e.g. \"+27 67 300 3886\" (enables Call)",
+    "  lat, lng : decimal degrees (enables Map / Directions / the pin on the map)",
+    "  verified : false while the coordinates still need checking on the ground",
+    "Ordering is automatic: regions alphabetically, centres alphabetically inside",
+    "each region. Centres without coordinates are listed last and show no pin."
+  ],
+  "version": 1,
+  "centres": [
+    {
+      "id": "gauteng-ebhubesini",
+      "name": "eBhubesini",
+      "region": "Gauteng",
+      "address": "10 Small Street, Marshalltown, Johannesburg",
+      "town": "Marshalltown",
+      "phone": "+27 67 300 3886",
+      "lat": -26.2056,
+      "lng": 28.0456,
+      "verified": false
+    },
+    {
+      "id": "gauteng-kwamama",
+      "name": "KwaMama",
+      "region": "Gauteng",
+      "address": "126 Cnr Wolmarans & Claim Street, Joubert Park, Johannesburg",
+      "town": "Joubert Park",
+      "phone": "+27 72 118 7738",
+      "lat": -26.1986,
+      "lng": 28.047,
+      "verified": false
+    },
+    {
+      "id": "gauteng-kwabhungane",
+      "name": "KwaBhungane",
+      "region": "Gauteng",
+      "address": "7 & 9 Street, Wynberg (same street as the clinic), Johannesburg",
+      "town": "Wynberg",
+      "phone": "+27 73 113 4523",
+      "lat": -26.108,
+      "lng": 28.068,
+      "verified": false
+    },
+    {
+      "id": "gauteng-ikhaya-legugu",
+      "name": "Ikhaya Legugu",
+      "region": "Gauteng",
+      "address": "955 Simelani Street, Thwala Section, Katlehong",
+      "town": "Katlehong",
+      "phone": "+27 78 621 5041",
+      "lat": -26.3216,
+      "lng": 28.1462,
+      "verified": false
+    },
+    {
+      "id": "gauteng-pretoria",
+      "name": "Pretoria",
+      "region": "Gauteng",
+      "address": "Cnr Bloed & Bosman Street, Pretoria",
+      "town": "Pretoria CBD",
+      "phone": "+27 81 032 3331",
+      "lat": -25.7461,
+      "lng": 28.1881,
+      "verified": false
+    },
+    {
+      "id": "gauteng-soshanguve",
+      "name": "Soshanguve",
+      "region": "Gauteng",
+      "address": "1481 Phillipi Street, Block L, Soshanguve",
+      "town": "Soshanguve",
+      "phone": "+27 82 087 3331",
+      "lat": -25.528,
+      "lng": 28.102,
+      "verified": false
+    },
+    {
+      "id": "gauteng-mabopane",
+      "name": "Mabopane",
+      "region": "Gauteng",
+      "address": "421 Magapan Street, Mabopane, Pretoria",
+      "town": "Mabopane",
+      "phone": "+27 76 018 1051",
+      "lat": -25.51,
+      "lng": 28.06,
+      "verified": false
+    },
+    {
+      "id": "gauteng-hammanskraal",
+      "name": "Hammanskraal",
+      "region": "Gauteng",
+      "address": "",
+      "town": "Hammanskraal",
+      "phone": "+27 82 087 3331",
+      "lat": -25.409,
+      "lng": 28.273,
+      "verified": false
+    }
+  ]
+}
