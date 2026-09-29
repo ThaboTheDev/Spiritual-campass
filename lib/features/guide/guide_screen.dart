@@ -58,12 +58,12 @@ class GuideScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _CoordinateRow(
+                    const _CoordinateRow(
                       label: S.dmsLabel,
                       value: Ekuphumuleni.dms,
                     ),
                     const SizedBox(height: 8),
-                    _CoordinateRow(
+                    const _CoordinateRow(
                       label: S.decimalLabel,
                       value: Ekuphumuleni.decimal,
                     ),
@@ -81,7 +81,7 @@ class GuideScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              _Heading(text: S.purposeHeading),
+              const _Heading(text: S.purposeHeading),
               const SizedBox(height: 10),
               SectionCard(
                 child: Column(
@@ -104,22 +104,22 @@ class GuideScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              _Heading(text: S.howToUse),
+              const _Heading(text: S.howToUse),
               const SizedBox(height: 10),
-              SectionCard(
+              const SectionCard(
                 child: Column(
                   children: <Widget>[
                     _NumberedStep(index: 1, text: S.step1),
-                    const _StepDivider(),
+                    _StepDivider(),
                     _NumberedStep(index: 2, text: S.step2),
-                    const _StepDivider(),
+                    _StepDivider(),
                     _NumberedStep(index: 3, text: S.step3),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              _Heading(text: S.accuracyHeading),
+              const _Heading(text: S.accuracyHeading),
               const SizedBox(height: 10),
               SectionCard(
                 child: Column(
@@ -147,7 +147,7 @@ class GuideScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              _Heading(text: S.aboutHeading),
+              const _Heading(text: S.aboutHeading),
               const SizedBox(height: 10),
               SectionCard(
                 child: BilingualText(

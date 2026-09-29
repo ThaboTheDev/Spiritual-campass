@@ -102,7 +102,7 @@ class Wmm2025 {
   static const double _b = 6356.7523142; // WGS84 semi-minor axis, km.
   static const double _re = 6371.2; // WMM reference radius, km.
 
-  static final int _size = maxOrder + 1;
+  static const int _size = maxOrder + 1;
 
   // Lazily built, immutable once built. Mirrors the tables the reference C code
   // prepares from the coefficient file.
@@ -190,12 +190,12 @@ class Wmm2025 {
     pp[0] = 1.0;
     dp[0][0] = 0.0;
 
-    final double a2 = _a * _a;
-    final double b2 = _b * _b;
-    final double c2 = a2 - b2;
-    final double a4 = a2 * a2;
-    final double b4 = b2 * b2;
-    final double c4 = a4 - b4;
+    const double a2 = _a * _a;
+    const double b2 = _b * _b;
+    const double c2 = a2 - b2;
+    const double a4 = a2 * a2;
+    const double b4 = b2 * b2;
+    const double c4 = a4 - b4;
 
     final double dt = year - epoch;
 
@@ -239,7 +239,7 @@ class Wmm2025 {
     for (int n = 1; n <= maxOrder; n++) {
       ar = ar * aor;
       int m = 0;
-      int d3 = 1;
+      const int d3 = 1;
       double d4 = (n + m + d3) / d3;
       while (d4 > 0) {
         // Schmidt semi-normalised associated Legendre functions and their

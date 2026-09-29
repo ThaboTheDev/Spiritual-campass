@@ -137,7 +137,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
               ],
 
               if (location.isManual) ...<Widget>[
-                InfoBanner(
+                const InfoBanner(
                   message: S.manualInUse,
                   icon: Icons.push_pin_outlined,
                   color: AppColors.gold,

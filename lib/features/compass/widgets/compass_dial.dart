@@ -193,7 +193,7 @@ class _DialPainter extends CustomPainter {
       centre,
       radius - 2,
       Paint()
-        ..shader = RadialGradient(
+        ..shader = const RadialGradient(
           colors: <Color>[
             AppColors.surfaceAlt,
             AppColors.surface,
@@ -317,7 +317,7 @@ class _MarkerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double centreX = size.width / 2.0;
-    final double top = 2.0;
+    const double top = 2.0;
     final double width = aligned ? 13.0 : 11.0;
     final double height = aligned ? 15.0 : 12.0;
 

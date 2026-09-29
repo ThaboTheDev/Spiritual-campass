@@ -130,7 +130,7 @@ class LocationController extends Notifier<LocationState> {
     }
     state = state.copyWith(loading: true, clearError: true);
 
-    LocationAccess access = await _repository.requestAccess();
+    final LocationAccess access = await _repository.requestAccess();
     if (_disposed) {
       return access;
     }

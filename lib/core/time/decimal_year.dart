@@ -16,7 +16,7 @@ abstract final class DecimalYear {
     final int year = utc.year;
     final DateTime start = DateTime.utc(year, 1, 1);
     final DateTime end = DateTime.utc(year + 1, 1, 1);
-    final double yearLengthMs = (end.difference(start).inMilliseconds).toDouble();
+    final double yearLengthMs = end.difference(start).inMilliseconds.toDouble();
     final double elapsedMs = utc.difference(start).inMilliseconds.toDouble();
     return year + (elapsedMs / yearLengthMs);
   }

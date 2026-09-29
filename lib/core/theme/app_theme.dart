@@ -270,89 +270,89 @@ abstract final class AppTheme {
   );
 
   static TextTheme _baseTextTheme(ColorScheme scheme) {
-    return TextTheme(
-      displayLarge: const TextStyle(
+    return const TextTheme(
+      displayLarge: TextStyle(
         fontSize: 34,
         height: 1.15,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      displayMedium: const TextStyle(
+      displayMedium: TextStyle(
         fontSize: 28,
         height: 1.2,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      displaySmall: const TextStyle(
+      displaySmall: TextStyle(
         fontSize: 24,
         height: 1.25,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      headlineLarge: const TextStyle(
+      headlineLarge: TextStyle(
         fontSize: 22,
         height: 1.25,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      headlineMedium: const TextStyle(
+      headlineMedium: TextStyle(
         fontSize: 19,
         height: 1.3,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      headlineSmall: const TextStyle(
+      headlineSmall: TextStyle(
         fontSize: 17,
         height: 1.3,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleLarge: const TextStyle(
+      titleLarge: TextStyle(
         fontSize: 26,
         height: 1.2,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleMedium: const TextStyle(
+      titleMedium: TextStyle(
         fontSize: 16,
         height: 1.3,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleSmall: const TextStyle(
+      titleSmall: TextStyle(
         fontSize: 14,
         height: 1.3,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      bodyLarge: const TextStyle(
+      bodyLarge: TextStyle(
         fontSize: 16,
         height: 1.45,
         color: AppColors.textPrimary,
       ),
-      bodyMedium: const TextStyle(
+      bodyMedium: TextStyle(
         fontSize: 14,
         height: 1.45,
         color: AppColors.textPrimary,
       ),
-      bodySmall: const TextStyle(
+      bodySmall: TextStyle(
         fontSize: 12.5,
         height: 1.4,
         color: AppColors.textSecondary,
       ),
-      labelLarge: const TextStyle(
+      labelLarge: TextStyle(
         fontSize: 14,
         height: 1.2,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      labelMedium: const TextStyle(
+      labelMedium: TextStyle(
         fontSize: 12.5,
         height: 1.2,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
       ),
-      labelSmall: const TextStyle(
+      labelSmall: TextStyle(
         fontSize: 11,
         height: 1.2,
         fontWeight: FontWeight.w600,

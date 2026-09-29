@@ -153,7 +153,7 @@ class MsamoScreen extends ConsumerWidget {
               const SizedBox(height: 12),
 
               if (locked)
-                InfoBanner(
+                const InfoBanner(
                   message: S.lockedNote,
                   icon: Icons.lock_outline,
                   color: AppColors.gold,
@@ -180,7 +180,7 @@ class MsamoScreen extends ConsumerWidget {
 
               if (compass.needsCalibration && compass.isRunning) ...<Widget>[
                 const SizedBox(height: 12),
-                InfoBanner(
+                const InfoBanner(
                   message: S.calibrateHint,
                   icon: Icons.screen_rotation_outlined,
                   color: AppColors.warning,
@@ -188,7 +188,7 @@ class MsamoScreen extends ConsumerWidget {
               ],
               if (compass.status == CompassStatus.noSensor) ...<Widget>[
                 const SizedBox(height: 12),
-                InfoBanner(
+                const InfoBanner(
                   message: S.noSensor,
                   icon: Icons.sensors_off_outlined,
                   color: AppColors.warning,
@@ -279,7 +279,7 @@ class _TurnInstruction extends StatelessWidget {
         fill: AppColors.gold.withValues(alpha: 0.12),
         child: Column(
           children: <Widget>[
-            Icon(Icons.check_circle_outline_rounded,
+            const Icon(Icons.check_circle_outline_rounded,
                 color: AppColors.gold, size: 34),
             const SizedBox(height: 8),
             BilingualText(

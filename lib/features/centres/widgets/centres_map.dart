@@ -151,12 +151,12 @@ class _CentresMapState extends ConsumerState<CentresMap> {
             Positioned.fill(
               child: FlutterMap(
                 mapController: _mapController,
-                options: MapOptions(
+                options: const MapOptions(
                   initialCenter: SouthernAfricaBounds.centre,
                   initialZoom: SouthernAfricaBounds.initialZoom,
                   minZoom: _minZoom,
                   maxZoom: _maxZoom,
-                  interactionOptions: const InteractionOptions(
+                  interactionOptions: InteractionOptions(
                     flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                   ),
                   backgroundColor: AppColors.surface,
@@ -187,7 +187,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                   MarkerLayer(
                     markers: <Marker>[
                       Marker(
-                        point: LatLng(
+                        point: const LatLng(
                           Ekuphumuleni.latitude,
                           Ekuphumuleni.longitude,
                         ),

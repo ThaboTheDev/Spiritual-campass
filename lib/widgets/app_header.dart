@@ -36,7 +36,7 @@ class AppHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(S.eyebrow, style: AppText.eyebrow),
+                const Text(S.eyebrow, style: AppText.eyebrow),
                 const SizedBox(height: 5),
                 Text(
                   title,
