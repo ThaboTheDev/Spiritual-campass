@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../core/geo/coordinates.dart';
 import '../../../core/l10n/strings.dart';
+import '../../../core/map_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
@@ -57,6 +58,8 @@ class _CentresMapState extends ConsumerState<CentresMap> {
   final MapController _mapController = MapController();
   static const double _minZoom = 3.0;
   static const double _maxZoom = 18.0;
+
+  bool _hasTileError = false;
 
   @override
   void initState() {
@@ -163,11 +166,22 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                 ),
                 children: <Widget>[
                   TileLayer(
-                    urlTemplate:
-                        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                    subdomains: const <String>['a', 'b', 'c', 'd'],
-                    userAgentPackageName: 'com.tshk.tshk_compass',
-                    maxNativeZoom: 19,
+                    urlTemplate: MapConfig.tileUrlTemplate,
+                    userAgentPackageName: MapConfig.userAgentPackageName,
+                    maxNativeZoom: MapConfig.maxNativeZoom,
+                    tileBuilder: (BuildContext context, Widget tileWidget, TileImage tile) {
+                      return ColorFiltered(
+                        colorFilter: MapConfig.darkMapFilter,
+                        child: tileWidget,
+                      );
+                    },
+                    errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
+                      if (!_hasTileError && mounted) {
+                        setState(() {
+                          _hasTileError = true;
+                        });
+                      }
+                    },
                   ),
                   if (widget.userPoint != null)
                     CircleLayer(
@@ -244,15 +258,9 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                   RichAttributionWidget(
                     attributions: <SourceAttribution>[
                       TextSourceAttribution(
-                        'OpenStreetMap contributors',
+                        MapConfig.osmAttributionText,
                         onTap: () => NavigationLauncher.openWeb(
-                          'https://www.openstreetmap.org/copyright',
-                        ),
-                      ),
-                      TextSourceAttribution(
-                        'CARTO',
-                        onTap: () => NavigationLauncher.openWeb(
-                          'https://carto.com/attributions',
+                          MapConfig.osmAttributionUrl,
                         ),
                       ),
                     ],
@@ -260,6 +268,50 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                 ],
               ),
             ),
+
+            // Subtle fallback overlay when tiles fail to load (offline or blocked).
+            // Positioned behind zoom controls and lets user interact while pins remain visible on dark surface.
+            if (_hasTileError && !offline)
+              Positioned(
+                top: 12,
+                left: 12,
+                right: 12,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.background.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.cloud_off_rounded,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            MapConfig.fallbackMessage,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Zoom controls.
             Positioned(
@@ -307,7 +359,12 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                         ),
                         const SizedBox(height: 10),
                         TextButton.icon(
-                          onPressed: () => ref.invalidate(onlineProvider),
+                          onPressed: () {
+                            setState(() {
+                              _hasTileError = false;
+                            });
+                            ref.invalidate(onlineProvider);
+                          },
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: Text(
                             '${S.retry.en} · ${S.retry.zu}',
