@@ -123,7 +123,7 @@ class _EkuphumuleniSheet extends StatelessWidget {
                     Ekuphumuleni.dms,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondary,
-                      fontFamily: AppTheme.monoFontFamily,
+                      fontFamily: 'monospace',
                     ),
                   ),
                 ),
