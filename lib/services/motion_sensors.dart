@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter/services.dart' show PlatformException, MissingPluginException;
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../core/geo/heading_math.dart';

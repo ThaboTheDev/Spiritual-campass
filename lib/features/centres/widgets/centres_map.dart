@@ -246,7 +246,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                       size: const Size(38, 38),
                       alignment: Alignment.center,
                       padding: const EdgeInsets.all(40),
-                      maxZoom: perf.clusterMaxZoom,
+                      maxZoom: perf.clusterMaxZoom.toDouble(),
                       animationsOptions: perf.animate
                           ? const AnimationsOptions()
                           : const AnimationsOptions(

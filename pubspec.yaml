@@ -21,8 +21,8 @@ dependencies:
   # Device sensors and location.
   flutter_compass: ^0.8.1          # rung 1: fused heading
   sensors_plus: ^7.1.0             # rungs 2–3: magnetometer / accelerometer / gyroscope, level bubble
-  geolocator: ^14.1.1              # location + rung 4: GPS course
-  wakelock_plus: ^1.8.1            # keep the screen on while the compass runs
+  geolocator: 14.0.1              # location + rung 4: GPS course
+  wakelock_plus: 1.8.0            # keep the screen on while the compass runs
   device_info_plus: ^13.2.0        # low / normal performance profile
 
   # Map.
