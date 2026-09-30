@@ -6,7 +6,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../widgets/app_button.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
 import '../membership_controller.dart';
@@ -69,17 +69,16 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
           Semantics(
             header: true,
             child: Text(
-              '${S.membershipTitle.en.toUpperCase()} · '
-              '${S.membershipTitle.secondary.toUpperCase()}',
+              S.membershipTitle.text.toUpperCase(),
               style: AppText.sectionHeader.copyWith(color: AppColors.accent),
             ),
           ),
           const SizedBox(height: 12),
           ..._body(context, theme, m, c),
-          if (m.error != MembershipError.none) ...<Widget>[
+          if (_errorText(m.error) case final Bi message) ...<Widget>[
             const SizedBox(height: 10),
             InfoBanner(
-              message: _errorText(m.error),
+              message: message,
               icon: Icons.error_outline,
               color: m.error == MembershipError.offline
                   ? AppColors.warning
@@ -120,10 +119,10 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
 
       case MembershipPhase.signedOut:
         return <Widget>[
-          BilingualText(S.authTitle, style: theme.textTheme.titleSmall),
+          LocalizedText(S.authTitle, style: theme.textTheme.titleSmall),
           if (kStoreBuild) ...<Widget>[
             const SizedBox(height: 4),
-            BilingualText(S.payStore, style: note),
+            LocalizedText(S.payStore, style: note),
           ],
           const SizedBox(height: 10),
           TextField(
@@ -133,7 +132,7 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
             autocorrect: false,
             textInputAction: TextInputAction.done,
             style: const TextStyle(color: AppColors.textPrimary),
-            decoration: InputDecoration(labelText: S.authEmail.inline, isDense: true),
+            decoration: InputDecoration(labelText: S.authEmail.text, isDense: true),
             onSubmitted: (_) => c.sendCode(_email.text),
           ),
           const SizedBox(height: 10),
@@ -147,9 +146,9 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
 
       case MembershipPhase.codeSent:
         return <Widget>[
-          BilingualText(S.authCheck, style: theme.textTheme.titleSmall),
+          LocalizedText(S.authCheck, style: theme.textTheme.titleSmall),
           const SizedBox(height: 4),
-          BilingualText(S.authCode(m.email), style: note),
+          LocalizedText(S.authCode(m.email), style: note),
           const SizedBox(height: 10),
           TextField(
             controller: _code,
@@ -165,7 +164,7 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
               fontSize: 18,
             ),
             decoration:
-                InputDecoration(labelText: S.authCodeLabel.inline, isDense: true),
+                InputDecoration(labelText: S.authCodeLabel.text, isDense: true),
             onSubmitted: (_) => c.verifyCode(_code.text),
           ),
           const SizedBox(height: 10),
@@ -193,7 +192,7 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: BilingualText(
+                child: LocalizedText(
                   m.awaitingPayment ? S.payConfirming : S.payChecking,
                   style: theme.textTheme.bodyMedium,
                 ),
@@ -201,14 +200,14 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
             ],
           ),
           const SizedBox(height: 4),
-          BilingualText(S.payWait, style: note),
+          LocalizedText(S.payWait, style: note),
         ];
 
       case MembershipPhase.offline:
         return <Widget>[
           Text(m.email, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 6),
-          BilingualText(S.payOffline, style: theme.textTheme.bodyMedium),
+          LocalizedText(S.payOffline, style: theme.textTheme.bodyMedium),
           const SizedBox(height: 10),
           Row(
             children: <Widget>[
@@ -250,7 +249,7 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: BilingualText(
+                child: LocalizedText(
                   statusText,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
@@ -261,15 +260,15 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
           ),
           if (m.fromCache) ...<Widget>[
             const SizedBox(height: 4),
-            BilingualText(S.membershipCachedNote, style: note),
+            LocalizedText(S.membershipCachedNote, style: note),
           ],
           if (m.awaitingPayment) ...<Widget>[
             const SizedBox(height: 8),
-            BilingualText(S.paySlow, style: note),
+            LocalizedText(S.paySlow, style: note),
           ],
           const SizedBox(height: 10),
           if (!kStoreBuild && !access) ...<Widget>[
-            BilingualText(
+            LocalizedText(
               e.state == EntitlementState.trial
                   ? S.trialOffer(e.trialDays, e.priceLabel)
                   : S.payOffer(e.priceLabel),
@@ -342,10 +341,11 @@ class _MembershipCardState extends ConsumerState<MembershipCard>
     return '${l.year}-${two(l.month)}-${two(l.day)}';
   }
 
-  static Bi _errorText(MembershipError error) {
+  /// The message for [error], or `null` when there is none.
+  static Bi? _errorText(MembershipError error) {
     switch (error) {
       case MembershipError.none:
-        return const Bi('', '');
+        return null;
       case MembershipError.badEmail:
         return S.authBadEmail;
       case MembershipError.sendFailed:

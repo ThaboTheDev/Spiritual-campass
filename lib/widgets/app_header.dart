@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/l10n/strings.dart';
 import '../core/theme/app_theme.dart';
+import 'language_scope.dart';
 
 /// The header shown at the top of every screen: eyebrow, serif title and the
 /// round blue-and-gold crest.
@@ -25,6 +26,7 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     return Semantics(
       header: true,
@@ -36,7 +38,12 @@ class AppHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const Text(S.eyebrow, style: AppText.eyebrow),
+                Text(
+                  S.eyebrow.text.toUpperCase(),
+                  style: AppText.eyebrow,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 5),
                 Text(
                   title,
@@ -50,7 +57,7 @@ class AppHeader extends StatelessWidget {
           if (showLogo) ...<Widget>[
             const SizedBox(width: 12),
             Semantics(
-              label: 'The Revelation Spiritual Home crest',
+              label: S.crestLabel.text,
               child: ClipOval(
                 child: Image.asset(
                   'assets/logo.png',

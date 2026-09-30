@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/l10n/strings.dart';
@@ -14,9 +15,9 @@ class TshkApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Resolve the persisted / suggested secondary language before the first
-    // frame so every Bilingual widget renders the right second line.
-    ref.watch(languageProvider);
+    // Resolve the persisted / suggested language before the first frame so
+    // every string renders in it from the start.
+    final AppLanguage language = ref.watch(languageProvider);
 
     return LanguageScope(
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -27,6 +28,12 @@ class TshkApp extends ConsumerWidget {
           theme: AppTheme.dark(),
           darkTheme: AppTheme.dark(),
           themeMode: ThemeMode.dark,
+          // Framework strings (text-selection menu, tooltips, dialogs) follow
+          // the app language where Flutter has them; Chichewa and Bemba use
+          // English for those few built-in strings.
+          locale: language.materialLocale,
+          supportedLocales: AppLanguage.materialLocales,
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           home: const AppShell(),
           builder: (BuildContext context, Widget? child) {
             // Never let the OS font scale make the readouts unreadable, and

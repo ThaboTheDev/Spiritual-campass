@@ -131,7 +131,8 @@ abstract final class Ekuphumuleni {
   /// The target as a [GeoPoint].
   static const GeoPoint point = GeoPoint(latitude: latitude, longitude: longitude);
 
-  /// Coordinates in degrees / minutes / seconds, as shown on the Guide screen.
+  /// Coordinates in degrees / minutes / seconds (English letters; the UI uses
+  /// `Formatters.dmsPair` so Portuguese shows `L` for east).
   static const String dms = '29° 04′ 31.7″ S   27° 37′ 28.3″ E';
 
   /// Coordinates in decimal degrees, as shown on the Guide screen.
@@ -143,7 +144,8 @@ abstract final class Ekuphumuleni {
   /// Longitude broken into degrees / minutes / seconds.
   static const List<double> longitudeDms = <double>[27, 37, 28.3];
 
-  /// One line describing what Ekuphumuleni is.
+  /// One line describing what Ekuphumuleni is (English; the UI shows the
+  /// localised `S.ekuphumuleniDescription`).
   static const String description =
       'Ekuphumuleni is the designated spiritual capital for AIS spiritual '
       'mountain, temple and palace.';

@@ -8,7 +8,8 @@ The app points the way to **Ekuphumuleni**, the spiritual capital, so that
 prayer can face it and a msamo (umsamo) can be positioned toward it.
 
 * Target: `29° 04′ 31.7″ S, 27° 37′ 28.3″ E` = decimal `-29.07547, 27.62453`
-* Bilingual everywhere: English main, isiZulu secondary, both always visible
+* Five app languages — English, isiZulu, Português, Chichewa, iciBemba — the
+  chosen one replaces every piece of text in the app
 * Dark only, portrait only, Material 3
 * Offline for the compass, the sun readouts and the guide; only the map needs the
   internet
@@ -23,8 +24,8 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/app.dart` | Root `MaterialApp` (dark theme, clamped text scale) |
 | `lib/app_providers.dart` | App-wide providers (preferences, repositories, sensors, wake lock, performance profile, clock) |
 | `lib/core/config/app_config.dart` | Feature flags (`kMembershipEnabled`, `kStoreBuild`), API / Supabase placeholders, tile-cache cap |
-| `lib/core/l10n/strings.dart` | **Every** user-visible string: English + authored isiZulu (+ translation key) |
-| `lib/core/l10n/app_language.dart` | Secondary languages (isiZulu / Portuguese / Chichewa / Bemba), `translations.json` loader, fallback |
+| `lib/core/l10n/strings.dart` | **Every** user-visible string: English + authored isiZulu + translation key (`Bi(en, zu, key:, args:)`) |
+| `lib/core/l10n/app_language.dart` | App languages (English / isiZulu / Portuguese / Chichewa / Bemba), `translations.json` loader, fallback, Material locales |
 | `lib/core/perf/performance_profile.dart` | `low` / `normal` profile and the knobs it controls |
 | `lib/core/geo/heading_math.dart` | Facing math (flat → upright blend), tilt-compensated heading, gyro yaw, calibration offsets |
 | `lib/core/theme/app_theme.dart` | Colours, layout constants, Material 3 dark theme |
@@ -58,10 +59,10 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/features/membership/…` | Optional membership (Supabase OTP, `/api/me`, PayFast), behind `kMembershipEnabled` |
 | `lib/features/centres/…` | Map, clustering, search, nearest, grouped list, bottom sheet |
 | `lib/features/guide/…` | Guide screen (coordinates, steps, accuracy, about) |
-| `lib/widgets/…` | Header, bilingual text, cards, buttons, bottom navigation |
+| `lib/widgets/…` | Header, `LocalizedText` / `LanguageScope`, cards, buttons, bottom navigation |
 | `assets/centres.json` | The 88 centres in 15 regions — add centres here, not in code |
 | `assets/towns.json` | Towns for the Location tab picker |
-| `assets/translations.json` | Secondary-language table (zu / pt / ny / bem), 116 keys |
+| `assets/translations.json` | Translation tables (zu / pt / ny / bem), one entry per `S.*` key |
 | `assets/fonts/` | Bundled IBM Plex Sans / Mono and Source Serif 4 (`tool/fetch_fonts.sh`) |
 | `assets/logo.png` (+ `2.0x/`, `3.0x/`) | Crest (replace with the official artwork) |
 | `platform_config/…` | Android manifest / Gradle, iOS Info.plist / Podfile |
@@ -180,7 +181,7 @@ Added with the sensor ladder:
 | `test/core/heading_math_test.dart` | Tilt-compensated heading from accelerometer + magnetometer vectors (flat and upright), yaw-rate sign, level bubble |
 | `test/features/heading_ladder_test.dart` | Failover ladder under `fake_async`: timeouts, absent sensors, stale → restart → next rung, provisional samples, restart |
 | `test/features/calibration_and_gps_test.dart` | Sun / north calibration offset math (true vs magnetic), GPS course accepted only while walking and flagged true-north |
-| `test/core/l10n_test.dart` | Fallback order chosen → authored isiZulu → file isiZulu → English; locale suggestion; all `S.*` keys exist in `translations.json` |
+| `test/core/l10n_test.dart` | One language at a time, fallback to English; locale suggestion; every `Bi` has a key, every key exists in every language with the same placeholders |
 | `test/data/centres_asset_test.dart`, `test/data/towns_repository_test.dart` | 88 centres / 15 regions with valid coordinates and unique ids; towns parsing, search and filtering |
 | `test/core/performance_profile_test.dart` | Profile detection and the Simple-mode override |
 
@@ -331,12 +332,38 @@ when the app goes to the background and restarted on resume.
 
 ## Languages
 
-English is always the first line. The second line follows the language chosen
-on the Guide tab — **isiZulu (default), Português, Chichewa, Bemba** — loaded
-from `assets/translations.json` (116 keys). The choice is persisted; on first run
-it is suggested from the device locale (pt / ny / bem, else isiZulu). Fallback
-per string: chosen language → isiZulu authored in code → isiZulu in the file →
-English. All strings live in `lib/core/l10n/strings.dart` (`Bi(en, zu, key:)`).
+The app is shown in **one language at a time**, chosen under *Settings →
+Language* on the Guide tab: **English, isiZulu, Português, Chichewa or
+iciBemba**. The chosen language replaces all text — tabs, headings, buttons,
+readouts, status lines, messages, snackbars, hints, tooltips and accessibility
+labels — and switching takes effect immediately, without restarting the
+compass. Compass letters follow the language too (Portuguese uses L / O for
+east / west).
+
+* The choice is persisted. On first run it is suggested from the device locale
+  (zu and other Nguni languages → isiZulu, pt → Português, ny → Chichewa,
+  bem → iciBemba; a Mozambican/Malawian/Zambian phone in another language gets
+  that country's language), otherwise English.
+* All strings live in `lib/core/l10n/strings.dart` as `Bi(en, zu, key:,
+  args:)`. English and isiZulu are authored there; Portuguese, Chichewa and
+  Bemba are looked up by `key` in `assets/translations.json`. Parameterised
+  strings use `{name}` placeholders in the file.
+* Fallback per string: the chosen language → English (isiZulu additionally
+  tries the file before English).
+* Widgets show a `Bi` with `LocalizedText`, or read `bi.text` after calling
+  `LanguageScope.watch(context)`, so they rebuild when the language changes.
+* Flutter's own strings (text-selection menu, built-in tooltips) use the Material
+  localizations for English, isiZulu and Portuguese; Chichewa and Bemba fall
+  back to English for those.
+
+**Adding a string:** add a `Bi` with a new `key` in `strings.dart`, then add
+that key to the `zu`, `pt`, `ny` and `bem` tables of
+`assets/translations.json`. `flutter test test/core/l10n_test.dart` fails if a
+key or a placeholder is missing.
+
+Not translated: place names (towns, regions, centre names and addresses come
+from the data files as they are) and the iOS permission prompts, which the
+system shows from `Info.plist` in English · isiZulu.
 
 ## Feature flags
 
@@ -408,9 +435,10 @@ required by the OSM tile usage policy. For heavy traffic switch the URL in
   cross-checked by hand but **not compiled or run**. Run `flutter pub get`,
   `flutter analyze` and `flutter test` first.
 * The 88 centre coordinates and the town coordinates are as supplied.
-* Portuguese, Chichewa and Bemba strings in `translations.json` are as supplied;
-  the new isiZulu strings written for the sensor ladder, settings and membership
-  need a fluent speaker's review.
+* The first 116 keys of `translations.json` are as supplied. The remaining
+  keys (every other screen, message and label) were translated for this build
+  and need a fluent speaker's review — especially Chichewa and Bemba — as do
+  the isiZulu strings written for the sensor ladder, settings and membership.
 * Fonts are not committed; `tool/fetch_fonts.sh` downloads them (release URLs
   may need updating).
 * Behaviour on specific low-end phones (Android 7 / 1 GB, iPhone 6s) and the

@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/format/formatters.dart';
 import '../../../core/geo/coordinates.dart';
+import '../../../core/l10n/strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../widgets/language_scope.dart';
 
 /// The large circular compass dial.
 ///
@@ -64,6 +67,7 @@ class _CompassDialState extends State<CompassDial> {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final double size = widget.size;
     final double heading = widget.headingDeg ?? 0.0;
     final double bearing = widget.targetBearingDeg ?? 0.0;
@@ -79,9 +83,8 @@ class _CompassDialState extends State<CompassDial> {
     final double needleRad = Angles.toRadians(bearing - heading);
 
     return Semantics(
-      label: 'Compass dial. Bearing to Ekuphumuleni '
-          '${widget.targetBearingDeg?.round() ?? 0} degrees. '
-          '${aligned ? 'You are facing Ekuphumuleni.' : 'Turn to bring the needle to the marker.'}',
+      label: '${S.dialLabel(widget.targetBearingDeg?.round() ?? 0).text} '
+          '${aligned ? '${S.aligned.text}.' : S.dialTurnHint.text}',
       child: RepaintBoundary(
         child: SizedBox(
         width: size,
@@ -114,11 +117,14 @@ class _CompassDialState extends State<CompassDial> {
                           child: Padding(
                             padding: label.padding,
                             child: Text(
-                              label.text,
+                              Formatters.cardinal(
+                                label.bearingDeg,
+                                sixteenPoint: false,
+                              ),
                               style: TextStyle(
-                                fontSize: label.text == 'N' ? 15 : 12.5,
+                                fontSize: label.isNorth ? 15 : 12.5,
                                 fontWeight: FontWeight.w700,
-                                color: label.text == 'N'
+                                color: label.isNorth
                                     ? AppColors.gold
                                     : AppColors.textSecondary,
                               ),
@@ -170,18 +176,22 @@ class _CompassDialState extends State<CompassDial> {
 }
 
 const List<_CardinalLabel> _cardinals = <_CardinalLabel>[
-  _CardinalLabel('N', Alignment.topCenter, EdgeInsets.only(top: 30)),
-  _CardinalLabel('E', Alignment.centerRight, EdgeInsets.only(right: 30)),
-  _CardinalLabel('S', Alignment.bottomCenter, EdgeInsets.only(bottom: 30)),
-  _CardinalLabel('W', Alignment.centerLeft, EdgeInsets.only(left: 30)),
+  _CardinalLabel(0, Alignment.topCenter, EdgeInsets.only(top: 30)),
+  _CardinalLabel(90, Alignment.centerRight, EdgeInsets.only(right: 30)),
+  _CardinalLabel(180, Alignment.bottomCenter, EdgeInsets.only(bottom: 30)),
+  _CardinalLabel(270, Alignment.centerLeft, EdgeInsets.only(left: 30)),
 ];
 
+/// A cardinal letter on the rose; the letter itself follows the app language
+/// (see `Formatters.compassPoints`).
 class _CardinalLabel {
-  const _CardinalLabel(this.text, this.alignment, this.padding);
+  const _CardinalLabel(this.bearingDeg, this.alignment, this.padding);
 
-  final String text;
+  final double bearingDeg;
   final Alignment alignment;
   final EdgeInsets padding;
+
+  bool get isNorth => bearingDeg == 0;
 }
 
 /// Ring, tick marks and the soft inner gradient.

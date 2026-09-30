@@ -5,7 +5,7 @@ import '../../../core/l10n/strings.dart';
 import '../../../core/sun/sun_position.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../widgets/app_button.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../compass_controller.dart';
 import '../compass_providers.dart';
@@ -34,7 +34,7 @@ class CalibrationControls extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Flexible(
-            child: BilingualInline(
+            child: LocalizedText(
               compass.calibrationAnchor == CalibrationAnchor.sun
                   ? S.calibratedToSun
                   : S.calibratedToNorth,
@@ -62,9 +62,9 @@ class CalibrationControls extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          BilingualText(S.calibrationTitle, style: theme.textTheme.titleSmall),
+          LocalizedText(S.calibrationTitle, style: theme.textTheme.titleSmall),
           const SizedBox(height: 6),
-          BilingualText(
+          LocalizedText(
             S.calibrationBody,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
@@ -104,7 +104,7 @@ class CalibrationControls extends ConsumerWidget {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              toSun ? S.sunNightLong.inline : S.waitingForHeading.inline,
+              toSun ? S.sunNightLong.text : S.waitingForHeading.text,
               style: const TextStyle(color: AppColors.textPrimary),
             ),
           ),

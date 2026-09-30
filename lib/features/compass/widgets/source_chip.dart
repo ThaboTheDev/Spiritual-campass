@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/l10n/strings.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/localized_text.dart';
 import '../compass_controller.dart';
 
 /// The small status chip under the dial: which rung of the ladder is driving
@@ -30,7 +30,7 @@ class SourceChip extends StatelessWidget {
             Icon(icon, size: 14, color: colour),
             const SizedBox(width: 6),
             Flexible(
-              child: BilingualInline(
+              child: LocalizedText(
                 text,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: colour,
@@ -57,14 +57,10 @@ class SourceChip extends StatelessWidget {
       case CompassStatus.starting:
         return (S.compassWaiting, AppColors.warning, Icons.sensors_outlined);
       case CompassStatus.error:
-        return (
-          const Bi('Compass: error', 'Ikhompasi: iphutha'),
-          AppColors.danger,
-          Icons.error_outline,
-        );
+        return (S.compassError, AppColors.danger, Icons.error_outline);
       case CompassStatus.locationRequired:
         return (
-          const Bi('Compass: needs location', 'Ikhompasi: idinga indawo'),
+          S.compassNeedsLocation,
           AppColors.warning,
           Icons.location_searching,
         );

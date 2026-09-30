@@ -4,7 +4,7 @@ import '../../../core/l10n/strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
 
@@ -67,7 +67,7 @@ class CentreCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            centre.hasAddress ? centre.address : S.noAddress.en,
+            centre.hasAddress ? centre.address : S.noAddress.text,
             style: theme.textTheme.bodySmall?.copyWith(
               color: centre.hasAddress
                   ? AppColors.textSecondary
@@ -147,7 +147,7 @@ class _ActionButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: '${label.en}, ${label.secondary}',
+      label: label.text,
       child: Material(
         color: AppColors.surfaceAlt.withValues(alpha: enabled ? 1 : 0.4),
         borderRadius: BorderRadius.circular(10),
@@ -161,7 +161,7 @@ class _ActionButton extends StatelessWidget {
               children: <Widget>[
                 Icon(icon, size: 17, color: foreground),
                 const SizedBox(height: 2),
-                BilingualInline(
+                LocalizedText(
                   label,
                   style: TextStyle(
                     color: foreground,

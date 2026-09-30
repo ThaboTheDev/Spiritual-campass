@@ -16,7 +16,7 @@ enum AppButtonVariant {
   text,
 }
 
-/// A button with a bilingual label: English on top, isiZulu underneath.
+/// A button with a label in the chosen language.
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -30,7 +30,7 @@ class AppButton extends StatelessWidget {
     this.semanticLabel,
   });
 
-  /// Bilingual label.
+  /// Label.
   final Bi label;
 
   /// Tap handler; when `null` the button is disabled automatically.
@@ -76,35 +76,15 @@ class AppButton extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  label.en,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: enabled ? textColor : AppColors.textMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  label.secondary,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: enabled
-                        ? textColor.withValues(alpha: 0.72)
-                        : AppColors.textMuted,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            child: Text(
+              label.text,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: enabled ? textColor : AppColors.textMuted,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -161,7 +141,7 @@ class AppButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: semanticLabel ?? '${label.en}. ${label.secondary}',
+      label: semanticLabel ?? label.text,
       child: sized,
     );
   }

@@ -23,8 +23,9 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Secondary-language table (isiZulu / Portuguese / Chichewa / Bemba).
-  // A missing or corrupt file leaves the authored isiZulu strings in place.
+  // Translation tables (Portuguese / Chichewa / Bemba, plus isiZulu). A
+  // missing or corrupt file leaves those languages showing English; English
+  // and isiZulu are authored in code and always work.
   try {
     L10n.install(
       Translations.parse(await rootBundle.loadString('assets/translations.json')),

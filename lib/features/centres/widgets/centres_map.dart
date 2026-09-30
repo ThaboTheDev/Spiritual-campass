@@ -241,7 +241,8 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                         alignment: Alignment.bottomCenter,
                         child: Semantics(
                           button: true,
-                          label: '${S.ekuphumuleni.en}, ${S.spiritualCapital.en}',
+                          label:
+                              '${S.ekuphumuleni.text}, ${S.spiritualCapital.text}',
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: _openEkuphumuleni,
@@ -261,7 +262,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                   RichAttributionWidget(
                     attributions: <SourceAttribution>[
                       TextSourceAttribution(
-                        MapConfig.osmAttributionText,
+                        S.attribution.text,
                         onTap: () => NavigationLauncher.openWeb(
                           MapConfig.osmAttributionUrl,
                         ),
@@ -290,19 +291,19 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                         color: AppColors.border.withValues(alpha: 0.6),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Icon(
+                        const Icon(
                           Icons.cloud_off_rounded,
                           size: 16,
                           color: AppColors.textSecondary,
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            MapConfig.fallbackMessage,
-                            style: TextStyle(
+                            S.mapUnavailable.text,
+                            style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,
@@ -353,7 +354,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                             color: AppColors.textSecondary, size: 26),
                         const SizedBox(height: 10),
                         Text(
-                          S.offlineMap.inline,
+                          S.offlineMap.text,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: AppColors.textSecondary,
@@ -371,7 +372,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                           },
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: Text(
-                            S.retry.inline,
+                            S.retry.text,
                             style: const TextStyle(
                               color: AppColors.accent,
                               fontWeight: FontWeight.w600,
@@ -403,9 +404,10 @@ class _ZoomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     return Semantics(
       button: true,
-      label: '${tooltip.en}, ${tooltip.secondary}',
+      label: tooltip.text,
       child: Material(
         color: AppColors.surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(10),

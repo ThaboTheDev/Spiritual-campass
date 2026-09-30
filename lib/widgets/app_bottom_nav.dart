@@ -12,7 +12,7 @@ class AppTab {
     required this.selectedIcon,
   });
 
-  /// Bilingual tab label.
+  /// Tab label.
   final Bi label;
 
   /// Icon shown when the tab is not selected.
@@ -51,8 +51,8 @@ const List<AppTab> kAppTabs = <AppTab>[
   ),
 ];
 
-/// Bottom navigation with five tabs, each showing an icon, the English label
-/// and a tiny isiZulu label. The selected tab gets a rounded blue-tinted
+/// Bottom navigation with five tabs, each showing an icon and its label in
+/// the chosen language. The selected tab gets a rounded blue-tinted
 /// highlight.
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
@@ -125,7 +125,7 @@ class _AppTabButton extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${tab.label.en}, ${tab.label.secondary}',
+      label: tab.label.text,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Material(
@@ -151,27 +151,17 @@ class _AppTabButton extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    tab.label.en,
+                    tab.label.text,
                     style: (theme.textTheme.labelSmall ?? const TextStyle())
                         .copyWith(
                       color: foreground,
-                      fontSize: 10.5,
+                      fontSize: 11,
                       fontWeight:
                           selected ? FontWeight.w700 : FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    tab.label.secondary,
-                    style: (theme.textTheme.labelSmall ?? const TextStyle())
-                        .copyWith(
-                      color: foreground.withValues(alpha: selected ? 0.85 : 0.7),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),

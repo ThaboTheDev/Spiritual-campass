@@ -8,7 +8,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
 import '../../../widgets/app_button.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/language_scope.dart';
+import '../../../widgets/localized_text.dart';
 import '../../../widgets/nine_pointed_star.dart';
 
 /// Shows a centre's details after a map pin is tapped.
@@ -50,6 +51,7 @@ class _EkuphumuleniSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final double? distanceKm = (userPoint != null)
         ? GeoMath.distanceBetweenKm(userPoint!, Ekuphumuleni.point)
@@ -75,7 +77,7 @@ class _EkuphumuleniSheet extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    S.ekuphumuleni.en,
+                    S.ekuphumuleni.text,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
@@ -94,7 +96,7 @@ class _EkuphumuleniSheet extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    S.spiritualCapital.en,
+                    S.spiritualCapital.text,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: AppColors.gold,
                       fontSize: 10.5,
@@ -106,7 +108,7 @@ class _EkuphumuleniSheet extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              Ekuphumuleni.description,
+              S.ekuphumuleniDescription.text,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -120,7 +122,10 @@ class _EkuphumuleniSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    Ekuphumuleni.dms,
+                    Formatters.dmsPair(
+                      Ekuphumuleni.latitude,
+                      Ekuphumuleni.longitude,
+                    ),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondary,
                       fontFamily: 'monospace',
@@ -153,6 +158,7 @@ class _EkuphumuleniSheet extends StatelessWidget {
               onPressed: () => NavigationLauncher.openDirections(
                 latitude: Ekuphumuleni.latitude,
                 longitude: Ekuphumuleni.longitude,
+                // Passed to the maps app as the destination name.
                 label: S.ekuphumuleni.en,
               ),
               expand: true,
@@ -307,7 +313,7 @@ class _CentreSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            BilingualText(
+            LocalizedText(
               S.mapCaption,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textMuted,

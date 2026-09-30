@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../core/geo/heading_math.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/language_scope.dart';
+import '../../../widgets/localized_text.dart';
 
 /// A small spirit level: a bubble that drifts towards the raised side of the
-/// phone, with "Flat · Ithe bha" / "Tilted · Itshekile" beside it.
+/// phone, with "Flat" / "Tilted" (in the app language) beside it.
 ///
 /// Shown only while a motion sensor is active. The bubble moves ±[travel]
 /// pixels for ±30° of tilt, like the web edition's `drawBubble`.
@@ -38,9 +39,10 @@ class LevelBubble extends StatelessWidget {
     final double dy = -(attitude.pitchDeg / 30).clamp(-1.0, 1.0) * travel;
     final Color colour = flat ? AppColors.success : AppColors.warning;
     final ThemeData theme = Theme.of(context);
+    LanguageScope.watch(context);
 
     return Semantics(
-      label: flat ? S.flat.en : S.tilted.en,
+      label: flat ? S.flat.text : S.tilted.text,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
@@ -91,7 +93,7 @@ class LevelBubble extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          BilingualInline(
+          LocalizedText(
             flat ? S.flat : S.tilted,
             style: theme.textTheme.labelMedium?.copyWith(
               color: colour,

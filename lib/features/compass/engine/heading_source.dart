@@ -22,7 +22,7 @@ enum HeadingSourceKind {
 }
 
 extension HeadingSourceKindX on HeadingSourceKind {
-  /// Bilingual name for the status chip.
+  /// Localised name for the status chip.
   Bi get label => switch (this) {
         HeadingSourceKind.fusedCompass => S.srcFused,
         HeadingSourceKind.rawSensors => S.srcRaw,

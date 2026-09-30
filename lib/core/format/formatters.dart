@@ -1,4 +1,5 @@
 import '../geo/coordinates.dart';
+import '../l10n/app_language.dart';
 
 /// Presentation helpers for bearings, distances, coordinates and angles.
 ///
@@ -25,28 +26,36 @@ abstract final class Formatters {
     return '${value.round()}° ${cardinal(value)}';
   }
 
-  /// Eight-point (or sixteen-point) compass name for a bearing.
-  static String cardinal(double degrees, {bool sixteenPoint = true}) {
+  /// Sixteen-point compass abbreviations, starting at north, clockwise.
+  static const List<String> _pointsEn = <String>[
+    'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', //
+    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+  ];
+
+  /// Portuguese abbreviations: L = leste (east), O = oeste (west).
+  static const List<String> _pointsPt = <String>[
+    'N', 'NNE', 'NE', 'ENE', 'L', 'ESE', 'SE', 'SSE', //
+    'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO',
+  ];
+
+  /// The compass abbreviations for [language] (default: the app language).
+  ///
+  /// Only Portuguese has its own standard letters; isiZulu, Chichewa and
+  /// Bemba use the international N / E / S / W found on printed compasses.
+  static List<String> compassPoints([AppLanguage? language]) =>
+      (language ?? L10n.language) == AppLanguage.pt ? _pointsPt : _pointsEn;
+
+  /// Eight-point (or sixteen-point) compass name for a bearing, in the app
+  /// language's abbreviations (see [compassPoints]).
+  static String cardinal(
+    double degrees, {
+    bool sixteenPoint = true,
+    AppLanguage? language,
+  }) {
+    final List<String> all = compassPoints(language);
     final List<String> points = sixteenPoint
-        ? const <String>[
-            'N',
-            'NNE',
-            'NE',
-            'ENE',
-            'E',
-            'ESE',
-            'SE',
-            'SSE',
-            'S',
-            'SSW',
-            'SW',
-            'WSW',
-            'W',
-            'WNW',
-            'NW',
-            'NNW',
-          ]
-        : const <String>['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        ? all
+        : <String>[for (int i = 0; i < all.length; i += 2) all[i]];
     final double step = 360.0 / points.length;
     final int index =
         (Angles.normalize360(degrees + step / 2.0) / step).floor() %
@@ -97,24 +106,28 @@ abstract final class Formatters {
     return '$sign$value°';
   }
 
-  /// Formats a declination, e.g. `20.6° W` / `3.1° E`.
-  static String declination(double? degrees, {int decimals = 1}) {
+  /// Formats a declination, e.g. `20.6° W` / `3.1° E` (`O` / `L` in
+  /// Portuguese).
+  static String declination(double? degrees,
+      {int decimals = 1, AppLanguage? language}) {
     if (degrees == null) {
       return '—';
     }
-    final String hemisphere = degrees < 0 ? 'W' : 'E';
+    final List<String> points = compassPoints(language);
+    final String hemisphere = degrees < 0 ? points[12] : points[4];
     return '${degrees.abs().toStringAsFixed(decimals)}° $hemisphere';
   }
 
   /// Formats a latitude / longitude pair for the readouts, e.g.
-  /// `26.2041° S, 28.0473° E`.
+  /// `26.2041° S, 28.0473° E` (`… L` in Portuguese).
   static String latLon(double? latitude, double? longitude,
-      {int decimals = 4}) {
+      {int decimals = 4, AppLanguage? language}) {
     if (latitude == null || longitude == null) {
       return '—';
     }
-    return '${coordinate(latitude, 'S', 'N', decimals: decimals)}, '
-        '${coordinate(longitude, 'W', 'E', decimals: decimals)}';
+    final List<String> points = compassPoints(language);
+    return '${coordinate(latitude, points[8], points[0], decimals: decimals)}, '
+        '${coordinate(longitude, points[12], points[4], decimals: decimals)}';
   }
 
   /// Formats one coordinate with its hemisphere letter.
@@ -126,11 +139,13 @@ abstract final class Formatters {
   }
 
   /// Formats a [GeoPoint] as `26.2041° S, 28.0473° E`.
-  static String geoPoint(GeoPoint? point, {int decimals = 4}) {
+  static String geoPoint(GeoPoint? point,
+      {int decimals = 4, AppLanguage? language}) {
     if (point == null) {
       return '—';
     }
-    return latLon(point.latitude, point.longitude, decimals: decimals);
+    return latLon(point.latitude, point.longitude,
+        decimals: decimals, language: language);
   }
 
   /// Formats an accuracy in metres, e.g. `± 5 m`.
@@ -167,6 +182,15 @@ abstract final class Formatters {
     final String hh = time.hour.toString().padLeft(2, '0');
     final String mm = time.minute.toString().padLeft(2, '0');
     return '$hh:$mm';
+  }
+
+  /// A latitude / longitude pair in degrees / minutes / seconds, e.g.
+  /// `29° 04′ 31.7″ S   27° 37′ 28.3″ E` (`… L` in Portuguese).
+  static String dmsPair(double latitude, double longitude,
+      {AppLanguage? language}) {
+    final List<String> points = compassPoints(language);
+    return '${dms(latitude, points[8], points[0])}   '
+        '${dms(longitude, points[12], points[4])}';
   }
 
   /// Converts decimal degrees to degrees / minutes / seconds text,

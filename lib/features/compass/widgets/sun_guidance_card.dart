@@ -6,8 +6,9 @@ import '../../../core/geo/geo_math.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/sun/sun_position.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
+import '../../../widgets/language_scope.dart';
 
 /// Rung 5, "Sun guidance": how to face Ekuphumuleni with no heading sensor.
 ///
@@ -46,6 +47,8 @@ class SunGuidanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Bearings below use language-specific compass letters.
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final TextStyle? body = theme.textTheme.bodySmall?.copyWith(
       color: AppColors.textPrimary,
@@ -58,14 +61,14 @@ class SunGuidanceCard extends StatelessWidget {
     final List<Widget> lines = <Widget>[];
 
     if (target == null || sun == null) {
-      lines.add(BilingualText(S.notSetHint, style: body));
+      lines.add(LocalizedText(S.notSetHint, style: body));
     } else if (sun.elevationDeg < -1) {
-      lines.add(BilingualText(S.sunNightLong, style: body));
+      lines.add(LocalizedText(S.sunNightLong, style: body));
     } else {
       final double delta = Angles.shortestDelta(sun.azimuthDeg, target.bearingDeg);
       final int turn = delta.abs().round();
       lines.add(
-        BilingualText(
+        LocalizedText(
           turn <= 3 ? S.sunAhead : S.sunTurn(turn, toRight: delta > 0),
           style: body?.copyWith(fontWeight: FontWeight.w600),
         ),
@@ -74,14 +77,14 @@ class SunGuidanceCard extends StatelessWidget {
         // "Turn until the sun is on your left/right": the sun sits on the
         // side opposite to the turn.
         lines.add(const SizedBox(height: 6));
-        lines.add(BilingualText(S.sunOnSide(onRight: delta < 0), style: body));
+        lines.add(LocalizedText(S.sunOnSide(onRight: delta < 0), style: body));
       }
       if (!compact && sun.castsShadow) {
         final double shadow = sun.shadowBearingDeg;
         final double ds = Angles.shortestDelta(shadow, target.bearingDeg);
         lines.add(const SizedBox(height: 6));
         lines.add(
-          BilingualText(
+          LocalizedText(
             S.stickShadowGuide(
               Formatters.bearingWithCardinal(shadow),
               ds.abs().round(),
@@ -108,7 +111,7 @@ class SunGuidanceCard extends StatelessWidget {
                   size: 18, color: AppColors.gold),
               const SizedBox(width: 8),
               Expanded(
-                child: BilingualInline(
+                child: LocalizedText(
                   S.sunGuidanceTitle,
                   style: theme.textTheme.titleSmall,
                   maxLines: 1,
@@ -118,7 +121,7 @@ class SunGuidanceCard extends StatelessWidget {
           ),
           if (reason != null) ...<Widget>[
             const SizedBox(height: 6),
-            BilingualText(
+            LocalizedText(
               reason!,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
@@ -149,7 +152,7 @@ class SunGuidanceCard extends StatelessWidget {
           ...lines,
           if (magnetic != null) ...<Widget>[
             const SizedBox(height: 10),
-            BilingualText(
+            LocalizedText(
               S.handCompass(magnetic.round()),
               style: body?.copyWith(color: AppColors.textSecondary),
             ),
@@ -172,7 +175,7 @@ class _Value extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        BilingualInline(
+        LocalizedText(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
             color: AppColors.textMuted,

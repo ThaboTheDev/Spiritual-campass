@@ -5,7 +5,7 @@ import '../../core/l10n/strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/town.dart';
 import '../../data/repositories/towns_repository.dart';
-import '../../widgets/bilingual_text.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/language_scope.dart';
 import 'towns_providers.dart';
 
@@ -66,13 +66,13 @@ class _TownPickerSheetState extends ConsumerState<TownPickerSheet> {
                 child: Row(
                   children: <Widget>[
                     Expanded(
-                      child: BilingualText(
+                      child: LocalizedText(
                         S.pickTown,
                         style: theme.textTheme.titleSmall,
                       ),
                     ),
                     IconButton(
-                      tooltip: S.close.en,
+                      tooltip: S.close.text,
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
@@ -87,7 +87,7 @@ class _TownPickerSheetState extends ConsumerState<TownPickerSheet> {
                   textInputAction: TextInputAction.search,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: S.searchTown.inline,
+                    hintText: S.searchTown.text,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _query.text.isEmpty
                         ? null
@@ -101,7 +101,7 @@ class _TownPickerSheetState extends ConsumerState<TownPickerSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: BilingualText(
+                child: LocalizedText(
                   S.townNote,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
@@ -122,7 +122,7 @@ class _TownPickerSheetState extends ConsumerState<TownPickerSheet> {
                   error: (Object error, StackTrace _) => Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: BilingualText(
+                      child: LocalizedText(
                         S.noTownMatch,
                         style: theme.textTheme.bodyMedium,
                         textAlign: TextAlign.center,
@@ -155,7 +155,7 @@ class _TownList extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: BilingualText(
+          child: LocalizedText(
             S.noTownMatch,
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
