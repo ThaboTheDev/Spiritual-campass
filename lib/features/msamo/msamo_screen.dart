@@ -10,7 +10,7 @@ import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/bilingual_text.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
@@ -66,7 +66,7 @@ class MsamoScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               SectionCard(
-                child: BilingualText(
+                child: LocalizedText(
                   S.msamoIntro,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
@@ -162,7 +162,7 @@ class MsamoScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    BilingualText(
+                    LocalizedText(
                       S.msamoRequired,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
@@ -198,7 +198,11 @@ class MsamoScreen extends ConsumerWidget {
                     if (target != null) ...<Widget>[
                       const SizedBox(height: 12),
                       Text(
-                        '${S.distance.en}: ${Formatters.distanceKm(target.distanceKm)}',
+                        S
+                            .distanceValue(
+                              Formatters.distanceKm(target.distanceKm),
+                            )
+                            .text,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textMuted,
                         ),
@@ -301,7 +305,7 @@ class _TurnInstruction extends StatelessWidget {
         color: AppColors.border,
         child: Column(
           children: <Widget>[
-            BilingualText(
+            LocalizedText(
               S.msamoWaiting,
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
@@ -322,7 +326,7 @@ class _TurnInstruction extends StatelessWidget {
         color: AppColors.border,
         child: Column(
           children: <Widget>[
-            BilingualText(
+            LocalizedText(
               S.waitingForHeading,
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
@@ -352,7 +356,7 @@ class _TurnInstruction extends StatelessWidget {
             const Icon(Icons.check_circle_outline_rounded,
                 color: AppColors.gold, size: 34),
             const SizedBox(height: 8),
-            BilingualText(
+            LocalizedText(
               S.msamoAligned,
               style: theme.textTheme.headlineSmall?.copyWith(
                 color: AppColors.gold,
@@ -383,7 +387,7 @@ class _TurnInstruction extends StatelessWidget {
             size: 34,
           ),
           const SizedBox(height: 8),
-          BilingualText(
+          LocalizedText(
             instruction,
             style: theme.textTheme.headlineSmall?.copyWith(
               color: AppColors.textPrimary,
@@ -392,7 +396,7 @@ class _TurnInstruction extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
-          BilingualText(
+          LocalizedText(
             locked ? S.lockedNote : S.msamoNotAligned,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textMuted,
@@ -445,7 +449,7 @@ class _BearingValue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        BilingualText(
+        LocalizedText(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
             color: AppColors.textSecondary,

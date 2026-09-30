@@ -1,13 +1,16 @@
 import 'dart:convert';
+import 'dart:ui' show Locale;
 
 import 'package:flutter/foundation.dart';
 
-/// The secondary languages the app can show under the English line.
+/// The languages the whole app can be shown in.
 ///
-/// English is always the primary line and is authored in code
-/// (`S.*`); the secondary line is isiZulu by default and can be switched to
-/// any of these. Codes match the top-level keys of `assets/translations.json`.
+/// The chosen language replaces *all* text in the app (tabs, buttons, readouts,
+/// messages, accessibility labels). English and isiZulu are authored in code
+/// (`S.*` in `strings.dart`); Portuguese, Chichewa and Bemba come from
+/// `assets/translations.json`. Codes match the top-level keys of that file.
 enum AppLanguage {
+  en('en', 'English', <String>['en']),
   zu('zu', 'isiZulu', <String>['zu']),
   pt('pt', 'Português', <String>['pt']),
   ny('ny', 'Chichewa', <String>['ny', 'nya']),
@@ -24,8 +27,25 @@ enum AppLanguage {
   /// ISO 639 codes (2- and 3-letter) that map to this language.
   final List<String> localeCodes;
 
-  /// The default: isiZulu.
-  static const AppLanguage fallback = AppLanguage.zu;
+  /// The default, and the fallback for any string a language is missing.
+  static const AppLanguage fallback = AppLanguage.en;
+
+  /// Languages with Flutter's built-in Material / Cupertino localizations
+  /// (text-selection menus, tooltips, …). Chichewa and Bemba have none, so
+  /// those fall back to English for the few framework-provided strings.
+  static const List<Locale> materialLocales = <Locale>[
+    Locale('en'),
+    Locale('zu'),
+    Locale('pt'),
+  ];
+
+  /// The locale handed to `MaterialApp.locale` for this language.
+  Locale get materialLocale => switch (this) {
+        AppLanguage.zu => const Locale('zu'),
+        AppLanguage.pt => const Locale('pt'),
+        AppLanguage.en || AppLanguage.ny || AppLanguage.bem =>
+          const Locale('en'),
+      };
 
   /// Parses a persisted code; unknown codes give the default.
   static AppLanguage fromCode(String? code) {
@@ -45,12 +65,16 @@ enum AppLanguage {
     return fallback;
   }
 
-  /// Suggests a secondary language from the device locale, e.g. a phone set
-  /// to Portuguese (Mozambique) gets [pt]; Chichewa/Nyanja gets [ny]; Bemba
-  /// gets [bem]. Anything else — including English — gets the default.
+  /// Nguni languages close enough to isiZulu that it is the better first
+  /// guess than English (isiXhosa, siSwati, isiNdebele).
+  static const List<String> _nguni = <String>['xh', 'ss', 'nr', 'nd'];
+
+  /// Suggests a language from the device locale, e.g. a phone set to
+  /// Portuguese (Mozambique) gets [pt]; isiZulu gets [zu]; Chichewa/Nyanja
+  /// gets [ny]; Bemba gets [bem]. English phones stay in English.
   ///
-  /// Country hints help where the language is English but the country is
-  /// Zambia / Malawi / Mozambique.
+  /// Country hints apply only when the phone's language is neither English
+  /// nor one the app has, e.g. a French phone in Mozambique gets [pt].
   static AppLanguage suggest({String? languageCode, String? countryCode}) {
     final String? language = languageCode?.toLowerCase();
     if (language != null) {
@@ -58,6 +82,9 @@ enum AppLanguage {
         if (candidate.localeCodes.contains(language)) {
           return candidate;
         }
+      }
+      if (_nguni.contains(language)) {
+        return AppLanguage.zu;
       }
     }
     switch (countryCode?.toUpperCase()) {
@@ -78,12 +105,14 @@ enum AppLanguage {
 
 /// The parsed `translations.json`: one key → string table per language.
 ///
-/// The English table in the file only carries `name`; English strings live
-/// in code. Every other language is expected to have the same key set.
+/// The English table in the file only carries `name`; English (and the
+/// authored isiZulu) live in code. Every other language is expected to have
+/// the same key set as `zu`.
 class Translations {
   const Translations(this._tables);
 
-  /// An empty table: every lookup falls back to isiZulu / English.
+  /// An empty table: every lookup falls back to the authored English /
+  /// isiZulu.
   const Translations.empty() : _tables = const <String, Map<String, String>>{};
 
   final Map<String, Map<String, String>> _tables;
@@ -141,7 +170,7 @@ class Translations {
   }
 }
 
-/// The current secondary language and the loaded translations.
+/// The current app language and the loaded translations.
 ///
 /// A tiny global rather than a provider because string values (`Bi`) are
 /// constants used everywhere, including outside the widget tree. The UI
@@ -154,7 +183,7 @@ abstract final class L10n {
   static final ValueNotifier<AppLanguage> notifier =
       ValueNotifier<AppLanguage>(AppLanguage.fallback);
 
-  /// The active secondary language.
+  /// The active language.
   static AppLanguage get language => notifier.value;
 
   /// The loaded tables.
@@ -165,18 +194,21 @@ abstract final class L10n {
     _translations = translations;
   }
 
-  /// Switches the secondary language.
+  /// Switches the app language.
   static void setLanguage(AppLanguage language) {
     if (notifier.value != language) {
       notifier.value = language;
     }
   }
 
-  /// Resolves the secondary line for a key with the fallback order
-  /// *chosen language → isiZulu (authored) → isiZulu (file) → English*.
+  /// Resolves a string in [language] (default: the active language).
   ///
-  /// [zu] is the isiZulu authored in code; [en] the English line.
-  static String secondary({
+  /// * English → the English authored in code.
+  /// * isiZulu → the isiZulu authored in code → isiZulu in the file → English.
+  /// * Portuguese / Chichewa / Bemba → the file → English.
+  ///
+  /// Blank entries count as missing. [args] fill `{name}` placeholders.
+  static String resolve({
     required String en,
     required String zu,
     String? key,
@@ -184,21 +216,37 @@ abstract final class L10n {
     AppLanguage? language,
   }) {
     final AppLanguage active = language ?? L10n.language;
-    if (active != AppLanguage.zu && key != null) {
-      final String? translated = _translations.lookup(active.code, key);
-      if (translated != null && translated.trim().isNotEmpty) {
-        return Translations.format(translated, args);
-      }
+    switch (active) {
+      case AppLanguage.en:
+        return Translations.format(en, args);
+      case AppLanguage.zu:
+        if (zu.trim().isNotEmpty) {
+          return Translations.format(zu, args);
+        }
+        final String? fileZulu = _lookup(AppLanguage.zu, key);
+        if (fileZulu != null) {
+          return Translations.format(fileZulu, args);
+        }
+        return Translations.format(en, args);
+      case AppLanguage.pt:
+      case AppLanguage.ny:
+      case AppLanguage.bem:
+        final String? translated = _lookup(active, key);
+        if (translated != null) {
+          return Translations.format(translated, args);
+        }
+        return Translations.format(en, args);
     }
-    if (zu.trim().isNotEmpty) {
-      return Translations.format(zu, args);
+  }
+
+  static String? _lookup(AppLanguage language, String? key) {
+    if (key == null) {
+      return null;
     }
-    if (key != null) {
-      final String? fileZulu = _translations.lookup(AppLanguage.zu.code, key);
-      if (fileZulu != null && fileZulu.trim().isNotEmpty) {
-        return Translations.format(fileZulu, args);
-      }
+    final String? value = _translations.lookup(language.code, key);
+    if (value == null || value.trim().isEmpty) {
+      return null;
     }
-    return Translations.format(en, args);
+    return value;
   }
 }

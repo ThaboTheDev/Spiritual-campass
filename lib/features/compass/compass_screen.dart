@@ -13,7 +13,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/bilingual_text.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
@@ -168,11 +168,8 @@ class CompassScreen extends ConsumerWidget {
               ],
 
               if (compass.errorMessage != null) ...<Widget>[
-                InfoBanner(
-                  message: Bi(
-                    compass.errorMessage!,
-                    compass.errorMessage!,
-                  ),
+                const InfoBanner(
+                  message: S.compassErrorBody,
                   icon: Icons.error_outline,
                   color: AppColors.danger,
                 ),
@@ -190,8 +187,8 @@ class CompassScreen extends ConsumerWidget {
                     caption: sun == null
                         ? null
                         : (sun.isAboveHorizon
-                            ? S.aboveHorizon.en
-                            : S.belowHorizon.en),
+                            ? S.aboveHorizon.text
+                            : S.belowHorizon.text),
                     icon: Icons.wb_sunny_outlined,
                   ),
                   ReadoutCard(
@@ -204,7 +201,7 @@ class CompassScreen extends ConsumerWidget {
                     ReadoutCard(
                       label: S.stickShadow,
                       value: Formatters.bearingWithCardinal(sun.shadowBearingDeg),
-                      caption: S.shadowHint.en,
+                      caption: S.shadowHint.text,
                       icon: Icons.north_east_outlined,
                     ),
                   ReadoutCard(
@@ -212,7 +209,7 @@ class CompassScreen extends ConsumerWidget {
                     value: target == null
                         ? '—'
                         : Formatters.bearingWithCardinal(target.bearingDeg),
-                    caption: target == null ? S.notSetHint.en : null,
+                    caption: target == null ? S.notSetHint.text : null,
                     valueColor: AppColors.accent,
                     icon: Icons.navigation_outlined,
                   ),
@@ -221,7 +218,7 @@ class CompassScreen extends ConsumerWidget {
                     value: target == null
                         ? '—'
                         : Formatters.distanceKm(target.distanceKm),
-                    caption: S.ekuphumuleni.en,
+                    caption: S.ekuphumuleni.text,
                     icon: Icons.straighten_outlined,
                   ),
                   ReadoutCard(
@@ -229,7 +226,7 @@ class CompassScreen extends ConsumerWidget {
                     value: magneticBearing == null
                         ? '—'
                         : Formatters.bearingWithCardinal(magneticBearing),
-                    caption: magneticBearing == null ? S.notSetHint.en : null,
+                    caption: magneticBearing == null ? S.notSetHint.text : null,
                     icon: Icons.explore_outlined,
                   ),
                   ReadoutCard(
@@ -238,10 +235,10 @@ class CompassScreen extends ConsumerWidget {
                         ? '—'
                         : Formatters.declination(declination),
                     caption: declination == null
-                        ? S.notSetHint.en
+                        ? S.notSetHint.text
                         : (declination < 0
-                            ? 'magnetic north is west of true north'
-                            : 'magnetic north is east of true north'),
+                            ? S.declinationWest.text
+                            : S.declinationEast.text),
                     icon: Icons.swap_horiz_outlined,
                   ),
                   ReadoutCard(
@@ -250,8 +247,10 @@ class CompassScreen extends ConsumerWidget {
                         ? Formatters.geoPoint(location.effectivePoint)
                         : '—',
                     caption: location.hasPoint
-                        ? (location.isManual ? S.sourceManual.en : S.sourceGps.en)
-                        : S.notSetHint.en,
+                        ? (location.isManual
+                            ? S.sourceManual.text
+                            : S.sourceGps.text)
+                        : S.notSetHint.text,
                     icon: Icons.place_outlined,
                   ),
                 ],
@@ -259,7 +258,7 @@ class CompassScreen extends ConsumerWidget {
 
               const SizedBox(height: 16),
               SectionCard(
-                child: BilingualText(
+                child: LocalizedText(
                   S.compassHelp,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
@@ -306,9 +305,9 @@ class CompassScreen extends ConsumerWidget {
     }
     switch (facing.facing) {
       case SunFacing.ahead:
-        return 'Yes · Yebo';
+        return S.yes.text;
       case SunFacing.behind:
-        return 'No · Cha';
+        return S.no.text;
       case SunFacing.right:
       case SunFacing.left:
         return Formatters.bearingWithCardinal(sun.azimuthDeg);
@@ -319,22 +318,22 @@ class CompassScreen extends ConsumerWidget {
 
   String _facingSunCaption(FacingSunResult facing, SunPosition? sun) {
     if (sun == null) {
-      return S.notSetHint.en;
+      return S.notSetHint.text;
     }
     if (!facing.hasHeading) {
-      return S.sunUnknown.en;
+      return S.sunUnknown.text;
     }
     switch (facing.facing) {
       case SunFacing.ahead:
-        return S.yesFacingSun.en;
+        return S.yesFacingSun.text;
       case SunFacing.behind:
-        return S.sunBehind.en;
+        return S.sunBehind.text;
       case SunFacing.right:
-        return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° ${S.right.en}';
+        return S.sunOffBy(facing.turnDeg.round(), toRight: true).text;
       case SunFacing.left:
-        return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° ${S.left.en}';
+        return S.sunOffBy(facing.turnDeg.round(), toRight: false).text;
       case SunFacing.unknown:
-        return S.sunUnknown.en;
+        return S.sunUnknown.text;
     }
   }
 }
@@ -349,36 +348,26 @@ class _StatusLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final GeoPoint? point = location.effectivePoint;
 
     final Bi locationText = point == null
         ? S.locationNotSet
-        : Bi(
-            'Location: ${Formatters.geoPoint(point)}',
-            'Indawo: ${Formatters.geoPoint(point)}',
-          );
+        : S.locationValue(Formatters.geoPoint(point));
 
     final Bi compassText = switch (compass.status) {
       CompassStatus.off => S.compassOff,
       CompassStatus.starting => S.compassWaiting,
       CompassStatus.noSensor => S.compassNone,
-      CompassStatus.locationRequired =>
-        const Bi('Compass: needs location', 'Ikhompasi: idinga indawo'),
-      CompassStatus.error =>
-        const Bi('Compass: error', 'Ikhompasi: iphutha'),
+      CompassStatus.locationRequired => S.compassNeedsLocation,
+      CompassStatus.error => S.compassError,
       CompassStatus.running when compass.awaitingCalibration =>
         S.compassNeedsCal,
       CompassStatus.running when !compass.hasHeading => S.compassWaiting,
       CompassStatus.running => compass.trueHeadingDeg != null
-          ? Bi(
-              'Compass: ${Formatters.bearing(compass.trueHeadingDeg)} true',
-              'Ikhompasi: ${Formatters.bearing(compass.trueHeadingDeg)} iqiniso',
-            )
-          : Bi(
-              'Compass: ${Formatters.bearing(compass.magneticHeadingDeg)} magnetic',
-              'Ikhompasi: ${Formatters.bearing(compass.magneticHeadingDeg)} kazibuthe',
-            ),
+          ? S.compassTrue(Formatters.bearing(compass.trueHeadingDeg))
+          : S.compassMagnetic(Formatters.bearing(compass.magneticHeadingDeg)),
     };
 
     return SectionCard(
@@ -387,7 +376,7 @@ class _StatusLine extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            locationText.inline,
+            locationText.text,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
               fontSize: 12.5,
@@ -395,7 +384,7 @@ class _StatusLine extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            compassText.inline,
+            compassText.text,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
               fontSize: 12.5,
@@ -427,6 +416,7 @@ class _DialSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final bool active = compass.isRunning;
 
@@ -458,7 +448,7 @@ class _DialSection extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      BilingualText(
+                      LocalizedText(
                         S.startToBegin,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
@@ -488,7 +478,7 @@ class _DialSection extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2.5),
                       ),
                       const SizedBox(height: 10),
-                      BilingualText(
+                      LocalizedText(
                         S.waitingForHeading,
                         style: theme.textTheme.bodySmall,
                         textAlign: TextAlign.center,
@@ -501,14 +491,13 @@ class _DialSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        BilingualText(
+        LocalizedText(
           aligned
               ? S.aligned
               : (targetBearing == null
                   ? S.notSetHint
-                  : Bi(
-                      'Bearing ${Formatters.bearingWithCardinal(targetBearing)}',
-                      'Ukubheka ${Formatters.bearingWithCardinal(targetBearing)}',
+                  : S.bearingValue(
+                      Formatters.bearingWithCardinal(targetBearing),
                     )),
           style: theme.textTheme.titleSmall?.copyWith(
             color: aligned ? AppColors.gold : AppColors.textPrimary,

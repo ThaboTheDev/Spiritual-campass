@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tshk_compass/core/format/formatters.dart';
 import 'package:tshk_compass/core/geo/coordinates.dart';
+import 'package:tshk_compass/core/l10n/app_language.dart';
 
 void main() {
   group('Formatters.distanceKm', () {
@@ -75,6 +76,38 @@ void main() {
     test('decimal degrees to DMS', () {
       expect(Formatters.dms(-29.0754722, 'S', 'N'), '29° 04′ 31.7″ S');
       expect(Formatters.dms(27.6245278, 'W', 'E'), '27° 37′ 28.3″ E');
+      expect(Formatters.dmsPair(Ekuphumuleni.latitude, Ekuphumuleni.longitude),
+          Ekuphumuleni.dms);
+    });
+  });
+
+  group('Formatters in Portuguese (L = leste, O = oeste)', () {
+    tearDown(() => L10n.setLanguage(AppLanguage.fallback));
+
+    test('compass points', () {
+      expect(Formatters.cardinal(90, language: AppLanguage.pt), 'L');
+      expect(Formatters.cardinal(270, language: AppLanguage.pt), 'O');
+      expect(Formatters.cardinal(315, language: AppLanguage.pt), 'NO');
+      expect(Formatters.cardinal(90, language: AppLanguage.zu), 'E');
+    });
+
+    test('declination and coordinates', () {
+      expect(Formatters.declination(-20.61, language: AppLanguage.pt),
+          '20.6° O');
+      expect(Formatters.latLon(-26.2041, 28.0473, language: AppLanguage.pt),
+          '26.2041° S, 28.0473° L');
+      expect(
+        Formatters.dmsPair(Ekuphumuleni.latitude, Ekuphumuleni.longitude,
+            language: AppLanguage.pt),
+        '29° 04′ 31.7″ S   27° 37′ 28.3″ L',
+      );
+    });
+
+    test('follows the app language by default', () {
+      L10n.setLanguage(AppLanguage.pt);
+      expect(Formatters.bearingWithCardinal(90), '90° L');
+      L10n.setLanguage(AppLanguage.en);
+      expect(Formatters.bearingWithCardinal(90), '90° E');
     });
   });
 

@@ -38,19 +38,13 @@ final class MapConfig {
   /// Maximum native zoom level supported by the tile layer.
   static const int maxNativeZoom = 19;
 
-  /// OpenStreetMap copyright and attribution text.
+  /// OpenStreetMap copyright and attribution text (English; the map shows
+  /// the localised `S.attribution`).
   static const String osmAttributionText = '© OpenStreetMap contributors';
 
   /// OpenStreetMap copyright information URL.
   static const String osmAttributionUrl =
       'https://www.openstreetmap.org/copyright';
-
-  /// Bilingual fallback message shown when map tiles fail to load.
-  static const String fallbackMessageEn = 'Map unavailable offline';
-  static const String fallbackMessageZu =
-      'Imephu ayitholakali ngaphandle kwe-inthanethi';
-  static const String fallbackMessage =
-      '$fallbackMessageEn · $fallbackMessageZu';
 
   /// Invert-and-darken colour matrix to style standard light OSM raster tiles
   /// into a dark theme that matches the app's `#0f131c` palette.

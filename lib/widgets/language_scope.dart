@@ -2,16 +2,17 @@ import 'package:flutter/widgets.dart';
 
 import '../core/l10n/app_language.dart';
 
-/// Rebuilds its dependants when the secondary language changes.
+/// Rebuilds its dependants when the app language changes.
 ///
-/// Placed once at the root of the app (see `TshkApp`). Bilingual widgets call
-/// [LanguageScope.watch] in `build` so that switching languages updates every
-/// label in place, without recreating the screens or the running compass.
+/// Placed once at the root of the app (see `TshkApp`). Every widget that reads
+/// `Bi.text` in `build` calls [LanguageScope.watch] (or uses `LocalizedText`)
+/// so that switching languages updates every label in place, without
+/// recreating the screens or the running compass.
 class LanguageScope extends InheritedNotifier<ValueNotifier<AppLanguage>> {
   LanguageScope({super.key, required super.child})
       : super(notifier: L10n.notifier);
 
-  /// Registers a dependency and returns the active secondary language.
+  /// Registers a dependency and returns the active language.
   ///
   /// Safe to call without a scope (tests, previews): it then just returns
   /// the current language.

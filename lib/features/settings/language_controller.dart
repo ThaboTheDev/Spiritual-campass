@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_providers.dart';
 import '../../core/l10n/app_language.dart';
 
-/// Owns the secondary-language choice.
+/// Owns the app-language choice (English, isiZulu, Português, Chichewa or
+/// iciBemba); the chosen language replaces all text in the app.
 ///
 /// Order of precedence: the persisted choice → a suggestion from the device
-/// locale → isiZulu. The choice is pushed into [L10n] so every `Bi` resolves
+/// locale → English. The choice is pushed into [L10n] so every `Bi` resolves
 /// against it, and persisted through the preferences store.
 class LanguageController extends Notifier<AppLanguage> {
   @override
@@ -21,7 +22,7 @@ class LanguageController extends Notifier<AppLanguage> {
     return language;
   }
 
-  /// Switches the secondary language and persists it.
+  /// Switches the app language and persists it.
   Future<void> set(AppLanguage language) async {
     L10n.setLanguage(language);
     state = language;
@@ -42,6 +43,6 @@ class LanguageController extends Notifier<AppLanguage> {
   }
 }
 
-/// The active secondary language.
+/// The active app language.
 final NotifierProvider<LanguageController, AppLanguage> languageProvider =
     NotifierProvider<LanguageController, AppLanguage>(LanguageController.new);

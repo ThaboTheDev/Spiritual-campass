@@ -1,7 +1,8 @@
 name: tshk_compass
 description: >-
   TSHK Compass points the way to Ekuphumuleni, the spiritual capital, for
-  Abantwana Bobukhosi Bukamoya (amasosha). English and isiZulu, offline first.
+  Abantwana Bobukhosi Bukamoya (amasosha). English, isiZulu, Português,
+  Chichewa and iciBemba, offline first.
 publish_to: "none"
 
 # versionName+versionCode: 1.0.0 (1)
@@ -13,6 +14,9 @@ environment:
 
 dependencies:
   flutter:
+    sdk: flutter
+  # Built-in Material / Cupertino strings in isiZulu and Portuguese.
+  flutter_localizations:
     sdk: flutter
 
   # State management.

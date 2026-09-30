@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/format/formatters.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/l10n/strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/bilingual_text.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
@@ -56,7 +57,8 @@ class GuideScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${S.ekuphumuleni.en} · ${S.spiritualCapital.en}',
+                            '${S.ekuphumuleni.text} · ${S.spiritualCapital.text}'
+                                .toUpperCase(),
                             style: AppText.sectionHeader.copyWith(
                               color: AppColors.gold,
                             ),
@@ -65,9 +67,12 @@ class GuideScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const _CoordinateRow(
+                    _CoordinateRow(
                       label: S.dmsLabel,
-                      value: Ekuphumuleni.dms,
+                      value: Formatters.dmsPair(
+                        Ekuphumuleni.latitude,
+                        Ekuphumuleni.longitude,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     const _CoordinateRow(
@@ -76,7 +81,7 @@ class GuideScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      Ekuphumuleni.description,
+                      S.ekuphumuleniDescription.text,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: 12.5,
@@ -94,12 +99,12 @@ class GuideScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    BilingualText(
+                    LocalizedText(
                       S.purposeBody,
                       style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
                     ),
                     const SizedBox(height: 12),
-                    BilingualText(
+                    LocalizedText(
                       S.purposeBody2,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         height: 1.5,
@@ -132,7 +137,7 @@ class GuideScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    BilingualText(
+                    LocalizedText(
                       S.accuracyBody,
                       style: theme.textTheme.bodySmall?.copyWith(
                         height: 1.55,
@@ -141,7 +146,7 @@ class GuideScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    BilingualText(
+                    LocalizedText(
                       S.permissionsNote,
                       style: theme.textTheme.bodySmall?.copyWith(
                         height: 1.55,
@@ -157,7 +162,7 @@ class GuideScreen extends StatelessWidget {
               const _Heading(text: S.aboutHeading),
               const SizedBox(height: 10),
               SectionCard(
-                child: BilingualText(
+                child: LocalizedText(
                   S.aboutBody,
                   style: theme.textTheme.bodySmall?.copyWith(
                     height: 1.55,
@@ -171,7 +176,7 @@ class GuideScreen extends StatelessWidget {
               // Crest.
               Center(
                 child: Semantics(
-                  label: 'The Revelation Spiritual Home crest',
+                  label: S.crestLabel.text,
                   child: ClipOval(
                     child: Image.asset(
                       'assets/logo.png',
@@ -231,10 +236,11 @@ class _Heading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     return Semantics(
       header: true,
       child: Text(
-        '${text.en.toUpperCase()} · ${text.secondary.toUpperCase()}',
+        text.text.toUpperCase(),
         style: AppText.sectionHeader.copyWith(color: AppColors.accent),
       ),
     );
@@ -253,7 +259,7 @@ class _CoordinateRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        BilingualText(
+        LocalizedText(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
             color: AppColors.textMuted,
@@ -311,7 +317,7 @@ class _NumberedStep extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: BilingualText(
+          child: LocalizedText(
             text,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
           ),

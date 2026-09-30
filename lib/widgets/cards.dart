@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../core/l10n/strings.dart';
 import '../core/theme/app_theme.dart';
-import 'bilingual_text.dart';
+import 'language_scope.dart';
+import 'localized_text.dart';
 
 /// A rounded card with a 1px border on the app's slightly lighter navy.
 class SectionCard extends StatelessWidget {
@@ -76,7 +77,7 @@ class SectionCard extends StatelessWidget {
   }
 }
 
-/// One readout: bilingual label, a value, and an optional caption.
+/// One readout: a label, a value, and an optional caption.
 ///
 /// Used for the compass grid (bearing, distance, declination, …).
 class ReadoutCard extends StatelessWidget {
@@ -91,13 +92,13 @@ class ReadoutCard extends StatelessWidget {
     this.alignment = CrossAxisAlignment.start,
   });
 
-  /// Bilingual label above the value.
+  /// Label above the value.
   final Bi label;
 
   /// The formatted value, e.g. "318° NW".
   final String value;
 
-  /// Optional extra line under the value, e.g. the isiZulu for a value.
+  /// Optional extra line under the value, e.g. "above horizon".
   final String? caption;
 
   /// Colour of the value text; defaults to primary text.
@@ -114,9 +115,10 @@ class ReadoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     return SectionCard(
-      semanticLabel: '${label.en}. ${label.secondary}. $value',
+      semanticLabel: '${label.text}. $value',
       child: Column(
         crossAxisAlignment: alignment,
         mainAxisSize: MainAxisSize.min,
@@ -125,7 +127,7 @@ class ReadoutCard extends StatelessWidget {
             Icon(icon, size: 16, color: AppColors.textMuted),
             const SizedBox(height: 6),
           ],
-          BilingualText(
+          LocalizedText(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
@@ -175,7 +177,7 @@ class InfoBanner extends StatelessWidget {
     this.actionLabel,
   });
 
-  /// The bilingual message.
+  /// The message.
   final Bi message;
 
   /// Leading icon; defaults to an information outline.
@@ -207,7 +209,7 @@ class InfoBanner extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: BilingualText(
+          child: LocalizedText(
             message,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textPrimary,
@@ -217,7 +219,7 @@ class InfoBanner extends StatelessWidget {
         ),
         if (actionLabel != null) ...<Widget>[
           const SizedBox(width: 8),
-          BilingualInline(
+          LocalizedText(
             actionLabel!,
             style: theme.textTheme.labelMedium?.copyWith(
               color: accent,

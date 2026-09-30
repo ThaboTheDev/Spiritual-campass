@@ -5,7 +5,7 @@ import '../../../app_providers.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/perf/performance_profile.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
 import '../language_controller.dart';
@@ -32,18 +32,17 @@ class SettingsCard extends ConsumerWidget {
           Semantics(
             header: true,
             child: Text(
-              '${S.settingsHeading.en.toUpperCase()} · '
-              '${S.settingsHeading.secondary.toUpperCase()}',
+              S.settingsHeading.text.toUpperCase(),
               style: AppText.sectionHeader.copyWith(color: AppColors.accent),
             ),
           ),
           const SizedBox(height: 12),
 
           // Language.
-          BilingualText(S.secondaryLanguage, style: theme.textTheme.titleSmall),
+          LocalizedText(S.language, style: theme.textTheme.titleSmall),
           const SizedBox(height: 4),
-          BilingualText(
-            S.secondaryLanguageNote,
+          LocalizedText(
+            S.languageNote,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textMuted,
               fontSize: 12,
@@ -98,13 +97,13 @@ class SettingsCard extends ConsumerWidget {
               onChanged: (bool value) =>
                   ref.read(simpleModeProvider.notifier).set(value),
               activeTrackColor: AppColors.accent.withValues(alpha: 0.5),
-              title: BilingualText(
+              title: LocalizedText(
                 S.batterySaver,
                 style: theme.textTheme.titleSmall,
               ),
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: BilingualText(
+                child: LocalizedText(
                   S.batterySaverNote,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
@@ -117,7 +116,7 @@ class SettingsCard extends ConsumerWidget {
           if (autoLow && !simpleForced)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: BilingualInline(
+              child: LocalizedText(
                 S.simpleModeAuto,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.gold,

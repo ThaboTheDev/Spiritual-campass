@@ -10,7 +10,7 @@ import '../../data/models/centre.dart';
 import '../../data/repositories/centres_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/bilingual_text.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
@@ -96,7 +96,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                BilingualText(
+                LocalizedText(
                   S.mapCaption,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
@@ -113,12 +113,12 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
-                    hintText: S.searchCentre.inline,
+                    hintText: S.searchCentre.text,
                     suffixIcon: query.isEmpty
                         ? null
                         : IconButton(
                             icon: const Icon(Icons.close_rounded, size: 18),
-                            tooltip: S.close.inline,
+                            tooltip: S.close.text,
                             onPressed: () {
                               _searchController.clear();
                               ref
@@ -141,8 +141,12 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                 if (nearest != null) ...<Widget>[
                   const SizedBox(height: 8),
                   Text(
-                    '${S.nearestFound.en}: ${nearest.centre.name} · '
-                    '${Formatters.distanceKm(nearest.distanceKm)}',
+                    S
+                        .nearestCentreValue(
+                          nearest.centre.name,
+                          Formatters.distanceKm(nearest.distanceKm),
+                        )
+                        .text,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textMuted,
                       fontSize: 12,
@@ -152,7 +156,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                 const SizedBox(height: 20),
 
                 // Grouped list.
-                BilingualText(
+                LocalizedText(
                   S.allCentres,
                   style: theme.textTheme.titleSmall,
                 ),
@@ -165,7 +169,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                   )
                 else if (groupsAsync.hasError)
                   SectionCard(
-                    child: BilingualText(
+                    child: LocalizedText(
                       S.centresFailed,
                       style: theme.textTheme.bodySmall,
                     ),
@@ -186,7 +190,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
     final List<RegionGroup> groups = groupsAsync.valueOrNull ?? <RegionGroup>[];
     if (groups.isEmpty) {
       return SectionCard(
-        child: BilingualText(
+        child: LocalizedText(
           S.noResults,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -226,7 +230,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
         byDistanceAsync.valueOrNull ?? <Centre>[];
     if (centres.isEmpty) {
       return SectionCard(
-        child: BilingualText(
+        child: LocalizedText(
           S.noResults,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -237,7 +241,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: SectionHeader(title: S.nearest.en, count: centres.length),
+          child: SectionHeader(title: S.nearest.text, count: centres.length),
         ),
         for (final Centre centre in centres) ...<Widget>[
           CentreCard(
@@ -271,9 +275,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          hasPoint
-              ? S.nearest.inline
-              : S.locationNotSet.inline,
+          hasPoint ? S.nearest.text : S.locationNotSet.text,
           style: const TextStyle(color: AppColors.textPrimary),
         ),
       ),

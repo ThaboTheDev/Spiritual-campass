@@ -10,7 +10,7 @@ import '../../data/models/town.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/bilingual_text.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
@@ -29,8 +29,10 @@ class LocationScreen extends ConsumerStatefulWidget {
 class _LocationScreenState extends ConsumerState<LocationScreen> {
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
-  String? _latitudeError;
-  String? _longitudeError;
+  // Kept as `Bi` values (not resolved text) so a language switch while an
+  // error is showing re-renders it in the new language.
+  Bi? _latitudeError;
+  Bi? _longitudeError;
 
   @override
   void dispose() {
@@ -63,7 +65,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    BilingualText(
+                    LocalizedText(
                       S.currentPosition,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
@@ -94,24 +96,22 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                     ),
                     const SizedBox(height: 4),
                     _DetailRow(
-                      label: const Bi('Source', 'Umthombo'),
+                      label: S.source,
                       value: location.isManual
-                          ? S.sourceManual.inline
-                          : (point == null
-                              ? '—'
-                              : S.sourceGps.inline),
+                          ? S.sourceManual.text
+                          : (point == null ? '—' : S.sourceGps.text),
                     ),
                     if (point?.label != null) ...<Widget>[
                       const SizedBox(height: 4),
                       _DetailRow(
-                        label: const Bi('Place', 'Indawo'),
-                        value: point!.label!,
+                        label: S.place,
+                        value: _placeLabel(point!.label!),
                       ),
                     ],
                     if (location.errorMessage != null) ...<Widget>[
                       const SizedBox(height: 8),
                       Text(
-                        location.errorMessage!,
+                        S.locationError.text,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.danger,
                         ),
@@ -174,12 +174,12 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    BilingualText(
+                    LocalizedText(
                       S.enterManually,
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 4),
-                    BilingualText(
+                    LocalizedText(
                       S.manualNote,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textMuted,
@@ -191,14 +191,14 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                       controller: _latitudeController,
                       label: S.latitude,
                       hint: '-26.2041',
-                      errorText: _latitudeError,
+                      errorText: _latitudeError?.text,
                     ),
                     const SizedBox(height: 10),
                     _CoordinateField(
                       controller: _longitudeController,
                       label: S.longitude,
                       hint: '28.0473',
-                      errorText: _longitudeError,
+                      errorText: _longitudeError?.text,
                     ),
                     const SizedBox(height: 14),
                     AppButton(
@@ -233,6 +233,21 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     );
   }
 
+  /// Labels saved by this screen are stored as stable tokens and shown in
+  /// the app language; town and centre names are shown as they are.
+  String _placeLabel(String label) {
+    if (label == _manualLabel || label == _legacyManualLabel) {
+      return S.manualEntry.text;
+    }
+    return label;
+  }
+
+  /// Stored with coordinates typed in by hand (a token, not display text).
+  static const String _manualLabel = 'Manual entry';
+
+  /// Older builds stored this on the point itself.
+  static const String _legacyManualLabel = 'Manual';
+
   bool _needsHelp(LocationState location) {
     if (location.hasPoint) {
       return false;
@@ -249,7 +264,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
       return;
     }
     if (access == LocationAccess.whileInUse || access == LocationAccess.always) {
-      _snack(context, S.sourceGps.inline);
+      _snack(context, S.sourceGps.text);
     }
   }
 
@@ -258,7 +273,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     if (!context.mounted) {
       return;
     }
-    _snack(context, S.useMyLocation.inline);
+    _snack(context, S.useMyLocation.text);
   }
 
   void _saveManual(BuildContext context) {
@@ -267,10 +282,10 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
 
     setState(() {
       _latitudeError = (latitude == null || latitude.abs() > 90)
-          ? S.invalidLatitude.inline
+          ? S.invalidLatitude
           : null;
       _longitudeError = (longitude == null || longitude.abs() > 180)
-          ? S.invalidLongitude.inline
+          ? S.invalidLongitude
           : null;
     });
 
@@ -285,12 +300,12 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
       latitude: latitude,
       longitude: longitude,
       altitudeMetres: Ekuphumuleni.fallbackAltitudeMetres,
-      label: 'Manual',
+      label: _manualLabel,
     );
     ref
         .read(locationControllerProvider.notifier)
-        .useManualLocation(point, label: 'Manual entry');
-    _snack(context, S.saved.inline);
+        .useManualLocation(point, label: _manualLabel);
+    _snack(context, S.saved.text);
   }
 
   Future<void> _pickTown(BuildContext context) async {
@@ -304,7 +319,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     if (!context.mounted) {
       return;
     }
-    _snack(context, '${S.saved.en} · ${town.name}');
+    _snack(context, S.savedNamed(town.name).text);
   }
 
   Future<void> _pickFromCentres(BuildContext context) async {
@@ -321,7 +336,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
       return;
     }
     if (centres.isEmpty) {
-      _snack(context, S.centresFailed.inline);
+      _snack(context, S.centresFailed.text);
       return;
     }
 
@@ -338,7 +353,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: BilingualText(
+              child: LocalizedText(
                 S.pickFromCentres,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
@@ -386,7 +401,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     if (!context.mounted) {
       return;
     }
-    _snack(context, '${S.saved.en} · ${chosen.name}');
+    _snack(context, S.savedNamed(chosen.name).text);
   }
 
   void _snack(BuildContext context, String message) {
@@ -429,7 +444,7 @@ class _DetailRow extends StatelessWidget {
       children: <Widget>[
         SizedBox(
           width: 96,
-          child: BilingualInline(
+          child: LocalizedText(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textMuted,
@@ -470,7 +485,7 @@ class _CoordinateField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        BilingualText(
+        LocalizedText(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,

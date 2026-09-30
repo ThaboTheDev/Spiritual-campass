@@ -5,7 +5,7 @@ import '../../core/geo/coordinates.dart';
 /// Small typed wrapper around `SharedPreferences`.
 ///
 /// Persisted: the manual location, the locked msamo direction, the last tab,
-/// the secondary language, the "Simple mode" switch and the last confirmed
+/// the app language, the "Simple mode" switch and the last confirmed
 /// membership entitlement (for offline use). Everything else is derived.
 class PreferencesStore {
   PreferencesStore(this._preferences);
@@ -18,6 +18,7 @@ class PreferencesStore {
   static const String _keyManualAltitude = 'manual.altitude';
   static const String _keyLockedBearing = 'msamo.lockedBearing';
   static const String _keyLastTab = 'shell.lastTab';
+  // Historical name, kept so an upgrade keeps the language already chosen.
   static const String _keyLanguage = 'l10n.secondaryLanguage';
   static const String _keySimpleMode = 'perf.simpleMode';
   static const String _keyEntitlement = 'membership.entitlement';
@@ -82,11 +83,11 @@ class PreferencesStore {
   Future<void> saveLastTab(int index) =>
       _preferences.setInt(_keyLastTab, index);
 
-  /// Persisted secondary language code (`zu`, `pt`, `ny`, `bem`), or `null`
+  /// Persisted app language code (`en`, `zu`, `pt`, `ny`, `bem`), or `null`
   /// when the user has never chosen (the device locale is then suggested).
   String? get languageCode => _preferences.getString(_keyLanguage);
 
-  /// Persists the secondary language code.
+  /// Persists the app language code.
   Future<void> saveLanguageCode(String code) =>
       _preferences.setString(_keyLanguage, code);
 
