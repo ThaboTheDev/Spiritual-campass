@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -14,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
 import '../../../widgets/language_scope.dart';
+import '../../../widgets/nine_pointed_star.dart';
 import '../../location/location_controller.dart';
 import '../centres_providers.dart';
 import 'centre_bottom_sheet.dart';
@@ -31,8 +31,8 @@ final class SouthernAfricaBounds {
 
 /// The dark OpenStreetMap-based map on the Centres tab.
 ///
-/// Blue pins are centres, the gold pin is Ekuphumuleni, and pins cluster when
-/// the map is zoomed out.
+/// Blue pins are centres and the gold nine-pointed star is Ekuphumuleni. All
+/// location pins are displayed simultaneously.
 class CentresMap extends ConsumerStatefulWidget {
   const CentresMap({
     super.key,
@@ -144,6 +144,13 @@ class _CentresMapState extends ConsumerState<CentresMap> {
     );
   }
 
+  void _openEkuphumuleni() {
+    showEkuphumuleniSheet(
+      context: context,
+      userPoint: ref.read(effectiveLocationProvider),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     LanguageScope.watch(context);
@@ -217,7 +224,11 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                         ),
                       ],
                     ),
-                  // Ekuphumuleni: always a distinct gold pin, never clustered.
+                  // Centres: all location pins shown at once.
+                  MarkerLayer(
+                    markers: _markers(),
+                  ),
+                  // Ekuphumuleni: always a distinct gold nine-pointed star.
                   MarkerLayer(
                     markers: <Marker>[
                       Marker(
@@ -225,63 +236,27 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                           Ekuphumuleni.latitude,
                           Ekuphumuleni.longitude,
                         ),
-                        width: 40,
-                        height: 50,
+                        width: 44,
+                        height: 52,
                         alignment: Alignment.bottomCenter,
                         child: Semantics(
+                          button: true,
                           label: '${S.ekuphumuleni.en}, ${S.spiritualCapital.en}',
-                          child: const _Pin(
-                            gold: true,
-                            icon: Icons.star_rounded,
-                            elevated: true,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _openEkuphumuleni,
+                            child: const _Pin(
+                              gold: true,
+                              elevated: true,
+                              child: NinePointedStar(
+                                size: 40,
+                                color: AppColors.gold,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ],
-                  ),
-                  // Centres, clustered when zoomed out.
-                  MarkerClusterLayerWidget(
-                    options: MarkerClusterLayerOptions(
-                      maxClusterRadius: perf.clusterRadius,
-                      size: const Size(38, 38),
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.all(40),
-                      maxZoom: perf.clusterMaxZoom.toDouble(),
-                      animationsOptions: perf.animate
-                          ? const AnimationsOptions()
-                          : const AnimationsOptions(
-                              zoom: Duration.zero,
-                              fitBound: Duration.zero,
-                              centerMarker: Duration.zero,
-                              spiderfy: Duration.zero,
-                            ),
-                      // Our pins handle their own taps, so the cluster layer
-                      // must not wrap them in another gesture detector.
-                      markerChildBehavior: true,
-                      markers: _markers(),
-                      builder: (BuildContext context, List<Marker> markers) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceAlt,
-                            borderRadius: BorderRadius.circular(19),
-                            border: Border.all(
-                              color: AppColors.accent.withValues(alpha: 0.75),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${markers.length}',
-                              style: const TextStyle(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                   RichAttributionWidget(
                     attributions: <SourceAttribution>[
@@ -448,50 +423,56 @@ class _ZoomButton extends StatelessWidget {
   }
 }
 
-/// A map pin: blue for centres, gold for Ekuphumuleni.
+/// A map pin: blue for centres, gold nine-pointed star for Ekuphumuleni.
 class _Pin extends StatelessWidget {
   const _Pin({
     this.gold = false,
     this.highlighted = false,
     this.elevated = false,
-    required this.icon,
-  });
+    this.icon,
+    this.child,
+  }) : assert(icon != null || child != null);
 
   final bool gold;
   final bool highlighted;
   final bool elevated;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     final Color main = gold ? AppColors.gold : AppColors.accent;
+    final double iconSize = elevated ? 40 : 34;
     return SizedBox(
-      width: elevated ? 40 : 34,
-      height: elevated ? 50 : 44,
+      width: elevated ? 44 : 34,
+      height: elevated ? 52 : 44,
       child: Stack(
         alignment: Alignment.topCenter,
         children: <Widget>[
           if (highlighted || elevated)
             Container(
-              width: (elevated ? 40 : 34) + (highlighted ? 10 : 4),
-              height: (elevated ? 40 : 34) + (highlighted ? 10 : 4),
+              width: iconSize + (highlighted ? 10 : 4),
+              height: iconSize + (highlighted ? 10 : 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: main.withValues(alpha: 0.18),
               ),
             ),
-          Icon(
-            icon,
-            size: elevated ? 40 : 34,
-            color: main,
-            shadows: <Shadow>[
-              Shadow(
-                color: AppColors.background.withValues(alpha: 0.9),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
+          if (child != null)
+            child!
+          else
+            Icon(
+              icon,
+              size: iconSize,
+              color: main,
+              shadows: <Shadow>[
+                Shadow(
+                  color: AppColors.background.withValues(alpha: 0.9),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
         ],
       ),
     );
