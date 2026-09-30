@@ -5,15 +5,22 @@ import '../../core/format/formatters.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/l10n/strings.dart';
+import '../../app_providers.dart';
+import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/bilingual_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
+import '../../widgets/language_scope.dart';
 import '../compass/compass_controller.dart';
 import '../compass/compass_providers.dart';
+import '../compass/widgets/calibration_controls.dart';
 import '../compass/widgets/compass_dial.dart';
+import '../compass/widgets/level_bubble.dart';
+import '../compass/widgets/source_chip.dart';
+import '../compass/widgets/sun_guidance_card.dart';
 import 'msamo_controller.dart';
 
 /// The Msamo tab: turn the msamo until it faces Ekuphumuleni, then freeze the
@@ -26,11 +33,13 @@ class MsamoScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final CompassState compass = ref.watch(compassControllerProvider);
     final MsamoState msamo = ref.watch(msamoControllerProvider);
     final TargetReading? target = ref.watch(targetReadingProvider);
     final double? declination = ref.watch(declinationProvider);
+    final PerfSettings perf = ref.watch(perfSettingsProvider);
 
     final double? heading = compass.trueHeadingDeg ?? compass.magneticHeadingDeg;
     final double? liveBearing = target?.bearingDeg;
@@ -81,6 +90,53 @@ class MsamoScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
+              // Sensor status and level bubble while the compass runs.
+              if (compass.isActive) ...<Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Flexible(child: SourceChip(compass: compass)),
+                    if (compass.hasAttitude) ...<Widget>[
+                      const SizedBox(width: 12),
+                      LevelBubble(
+                        attitude: compass.attitude!,
+                        size: 36,
+                        travel: 11,
+                        animate: perf.animate,
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              if (compass.isStale && compass.isActive) ...<Widget>[
+                InfoBanner(
+                  message: S.compassPaused,
+                  icon: Icons.vibration_outlined,
+                  color: AppColors.warning,
+                  actionLabel: S.retryCompass,
+                  onTap: () =>
+                      ref.read(compassControllerProvider.notifier).retry(),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (compass.waitingForWalk && !compass.isStale) ...<Widget>[
+                const InfoBanner(
+                  message: S.walkForDirection,
+                  icon: Icons.directions_walk,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (compass.isActive &&
+                  (compass.awaitingCalibration ||
+                      compass.source ==
+                          HeadingSourceKind.relativeCalibrated)) ...<Widget>[
+                CalibrationControls(compass: compass),
+                const SizedBox(height: 12),
+              ],
+
               // Small dial so the user can see the needle as they turn.
               if (bearing != null)
                 Center(
@@ -89,6 +145,7 @@ class MsamoScreen extends ConsumerWidget {
                     targetBearingDeg: bearing,
                     aligned: aligned,
                     active: compass.isRunning,
+                    simple: !perf.useGradients,
                     size: 232,
                   ),
                 ),
@@ -186,12 +243,25 @@ class MsamoScreen extends ConsumerWidget {
                   color: AppColors.warning,
                 ),
               ],
-              if (compass.status == CompassStatus.noSensor) ...<Widget>[
+              if (compass.isSunOnly || compass.awaitingCalibration) ...<Widget>[
                 const SizedBox(height: 12),
-                const InfoBanner(
-                  message: S.noSensor,
-                  icon: Icons.sensors_off_outlined,
-                  color: AppColors.warning,
+                SunGuidanceCard(
+                  sun: ref.watch(sunPositionProvider).valueOrNull,
+                  target: target,
+                  declinationDeg: declination,
+                  reason: compass.isSunOnly ? S.sunWhyNone : null,
+                  compact: true,
+                ),
+              ],
+              if (compass.isActive) ...<Widget>[
+                const SizedBox(height: 12),
+                AppButton(
+                  label: S.stopCompass,
+                  variant: AppButtonVariant.outlined,
+                  icon: Icons.stop_circle_outlined,
+                  onPressed: () =>
+                      ref.read(compassControllerProvider.notifier).stop(),
+                  expand: true,
                 ),
               ],
             ],
@@ -297,14 +367,8 @@ class _TurnInstruction extends StatelessWidget {
 
     final bool right = delta > 0;
     final bool around = degrees > 150;
-    final Bi instruction = Bi(
-      around
-          ? S.turnAroundEn(degrees)
-          : (right ? S.turnRightEn(degrees) : S.turnLeftEn(degrees)),
-      around
-          ? S.turnAroundZu(degrees)
-          : (right ? S.turnRightZu(degrees) : S.turnLeftZu(degrees)),
-    );
+    final Bi instruction =
+        around ? S.turnAround(degrees) : S.turnBy(degrees, toRight: right);
 
     return _Shell(
       color: AppColors.accent.withValues(alpha: 0.55),

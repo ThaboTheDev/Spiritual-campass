@@ -2,9 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/net/connectivity_probe.dart';
+import 'core/perf/performance_profile.dart';
 import 'data/local/preferences_store.dart';
 import 'data/repositories/location_repository.dart';
 import 'services/compass_service.dart';
+import 'services/motion_sensors.dart';
+import 'services/wake_lock_service.dart';
 
 /// The `SharedPreferences` instance created in `main()`.
 ///
@@ -29,9 +32,54 @@ final Provider<LocationRepository> locationRepositoryProvider =
   (ref) => GeolocatorLocationRepository(),
 );
 
-/// The device compass (flutter_compass).
+/// The device compass (flutter_compass): rung 1 of the heading ladder.
 final Provider<CompassService> compassServiceProvider =
     Provider<CompassService>((ref) => FlutterCompassService());
+
+/// Raw accelerometer / magnetometer / gyroscope (sensors_plus): rungs 2 – 3
+/// of the ladder and the level bubble.
+final Provider<MotionSensors> motionSensorsProvider =
+    Provider<MotionSensors>((ref) => const SensorsPlusMotionSensors());
+
+/// Screen wake lock while the compass runs.
+final Provider<WakeLockService> wakeLockServiceProvider =
+    Provider<WakeLockService>((ref) => const WakelockPlusService());
+
+/// What `device_info_plus` found out about the hardware. Overridden in
+/// `main()` with the detected value; defaults to "unknown" (normal profile).
+final Provider<DeviceClass> deviceClassProvider =
+    Provider<DeviceClass>((ref) => DeviceClass.unknown);
+
+/// The persisted "Battery saver / Simple mode" switch.
+class SimpleModeController extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(preferencesStoreProvider).simpleMode;
+
+  /// Turns Simple mode on or off and persists it.
+  Future<void> set(bool value) async {
+    state = value;
+    await ref.read(preferencesStoreProvider).saveSimpleMode(value);
+  }
+}
+
+/// Whether the user forced the low profile.
+final NotifierProvider<SimpleModeController, bool> simpleModeProvider =
+    NotifierProvider<SimpleModeController, bool>(SimpleModeController.new);
+
+/// The effective performance profile: hardware detection, or low when the
+/// user forced Simple mode.
+final Provider<PerformanceProfile> performanceProfileProvider =
+    Provider<PerformanceProfile>((ref) {
+  return resolveProfile(
+    device: ref.watch(deviceClassProvider),
+    simpleModeForced: ref.watch(simpleModeProvider),
+  );
+});
+
+/// Concrete rendering / sensor knobs for the effective profile.
+final Provider<PerfSettings> perfSettingsProvider = Provider<PerfSettings>(
+  (ref) => PerfSettings.of(ref.watch(performanceProfileProvider)),
+);
 
 /// A small internet reachability probe, used by the Centres map.
 final Provider<ConnectivityProbe> connectivityProbeProvider =

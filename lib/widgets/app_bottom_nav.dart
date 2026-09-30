@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/l10n/strings.dart';
 import '../core/theme/app_theme.dart';
+import 'language_scope.dart';
 
 /// One tab of the bottom navigation.
 class AppTab {
@@ -116,6 +117,7 @@ class _AppTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final Color foreground =
         selected ? AppColors.accent : AppColors.textMuted;
@@ -123,7 +125,7 @@ class _AppTabButton extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${tab.label.en}, ${tab.label.zu}',
+      label: '${tab.label.en}, ${tab.label.secondary}',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Material(
@@ -161,7 +163,7 @@ class _AppTabButton extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    tab.label.zu,
+                    tab.label.secondary,
                     style: (theme.textTheme.labelSmall ?? const TextStyle())
                         .copyWith(
                       color: foreground.withValues(alpha: selected ? 0.85 : 0.7),

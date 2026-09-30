@@ -116,7 +116,7 @@ class ReadoutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return SectionCard(
-      semanticLabel: '${label.en}. ${label.zu}. $value',
+      semanticLabel: '${label.en}. ${label.secondary}. $value',
       child: Column(
         crossAxisAlignment: alignment,
         mainAxisSize: MainAxisSize.min,

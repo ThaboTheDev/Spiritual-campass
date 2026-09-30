@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/l10n/strings.dart';
 import '../core/theme/app_theme.dart';
+import 'language_scope.dart';
 
 /// How an [AppButton] is styled.
 enum AppButtonVariant {
@@ -55,6 +56,7 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final bool enabled = onPressed != null;
     final Color accent = color ?? AppColors.accent;
@@ -90,7 +92,7 @@ class AppButton extends StatelessWidget {
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  label.zu,
+                  label.secondary,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: enabled
                         ? textColor.withValues(alpha: 0.72)
@@ -159,7 +161,7 @@ class AppButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: semanticLabel ?? '${label.en}. ${label.zu}',
+      label: semanticLabel ?? '${label.en}. ${label.secondary}',
       child: sized,
     );
   }

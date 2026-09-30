@@ -4,9 +4,9 @@ import '../../core/geo/coordinates.dart';
 
 /// Small typed wrapper around `SharedPreferences`.
 ///
-/// Only two things are persisted: a manually entered location (used when GPS is
-/// unavailable) and the msamo direction the user locked. Everything else is
-/// derived, so it is recomputed rather than stored.
+/// Persisted: the manual location, the locked msamo direction, the last tab,
+/// the secondary language, the "Simple mode" switch and the last confirmed
+/// membership entitlement (for offline use). Everything else is derived.
 class PreferencesStore {
   PreferencesStore(this._preferences);
 
@@ -18,6 +18,9 @@ class PreferencesStore {
   static const String _keyManualAltitude = 'manual.altitude';
   static const String _keyLockedBearing = 'msamo.lockedBearing';
   static const String _keyLastTab = 'shell.lastTab';
+  static const String _keyLanguage = 'l10n.secondaryLanguage';
+  static const String _keySimpleMode = 'perf.simpleMode';
+  static const String _keyEntitlement = 'membership.entitlement';
 
   /// The saved manual location, or `null` when none has been saved.
   GeoPoint? get manualLocation {
@@ -78,4 +81,31 @@ class PreferencesStore {
   /// Persists the current tab index.
   Future<void> saveLastTab(int index) =>
       _preferences.setInt(_keyLastTab, index);
+
+  /// Persisted secondary language code (`zu`, `pt`, `ny`, `bem`), or `null`
+  /// when the user has never chosen (the device locale is then suggested).
+  String? get languageCode => _preferences.getString(_keyLanguage);
+
+  /// Persists the secondary language code.
+  Future<void> saveLanguageCode(String code) =>
+      _preferences.setString(_keyLanguage, code);
+
+  /// Whether the user forced "Battery saver / Simple mode".
+  bool get simpleMode => _preferences.getBool(_keySimpleMode) ?? false;
+
+  /// Persists the Simple mode switch.
+  Future<void> saveSimpleMode(bool value) =>
+      _preferences.setBool(_keySimpleMode, value);
+
+  /// The last confirmed membership entitlement as JSON, for offline use.
+  String? get cachedEntitlementJson => _preferences.getString(_keyEntitlement);
+
+  /// Persists (or clears, with `null`) the cached entitlement JSON.
+  Future<void> saveCachedEntitlementJson(String? json) async {
+    if (json == null) {
+      await _preferences.remove(_keyEntitlement);
+      return;
+    }
+    await _preferences.setString(_keyEntitlement, json);
+  }
 }

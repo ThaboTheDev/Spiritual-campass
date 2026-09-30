@@ -6,6 +6,7 @@ import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
 import '../../../widgets/bilingual_text.dart';
 import '../../../widgets/cards.dart';
+import '../../../widgets/language_scope.dart';
 
 /// One centre in the grouped list: name, address, phone and the three actions.
 class CentreCard extends StatelessWidget {
@@ -31,6 +32,7 @@ class CentreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     return SectionCard(
       borderColor: highlighted ? AppColors.accent.withValues(alpha: 0.6) : null,
@@ -139,12 +141,13 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final Color foreground =
         enabled ? AppColors.accent : AppColors.textMuted.withValues(alpha: 0.5);
     return Semantics(
       button: true,
       enabled: enabled,
-      label: '${label.en}, ${label.zu}',
+      label: '${label.en}, ${label.secondary}',
       child: Material(
         color: AppColors.surfaceAlt.withValues(alpha: enabled ? 1 : 0.4),
         borderRadius: BorderRadius.circular(10),

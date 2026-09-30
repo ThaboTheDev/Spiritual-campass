@@ -1,0 +1,158 @@
+// REFERENCE ONLY - excerpts from the WEB edition (public/app.js). JavaScript, to be re-implemented in Dart.
+// S = shared state object, T(key) = translation lookup, norm() wraps to 0-360, signedDiff(a,b) = shortest signed angle.
+
+// ===== SUN POSITION + SUN CARD =====
+function sunPosition(date,lat,lon){
+  const d2r=Math.PI/180,r2d=180/Math.PI;
+  const jd=date.getTime()/86400000+2440587.5,t=(jd-2451545)/36525;
+  const L0=norm(280.46646+t*(36000.76983+t*0.0003032));
+  const M=norm(357.52911+t*(35999.05029-0.0001537*t));
+  const e=0.016708634-t*(0.000042037+0.0000001267*t);
+  const C=Math.sin(M*d2r)*(1.914602-t*(0.004817+0.000014*t))+Math.sin(2*M*d2r)*(0.019993-0.000101*t)+Math.sin(3*M*d2r)*0.000289;
+  const trueLon=L0+C,omega=125.04-1934.136*t,lam=trueLon-0.00569-0.00478*Math.sin(omega*d2r);
+  const eps0=23+(26+((21.448-t*(46.815+t*(0.00059-t*0.001813))))/60)/60,eps=eps0+0.00256*Math.cos(omega*d2r);
+  const decl=Math.asin(Math.sin(eps*d2r)*Math.sin(lam*d2r));
+  const y=Math.tan(eps*d2r/2)**2;
+  const eqt=4*r2d*(y*Math.sin(2*L0*d2r)-2*e*Math.sin(M*d2r)+4*e*y*Math.sin(M*d2r)*Math.cos(2*L0*d2r)-0.5*y*y*Math.sin(4*L0*d2r)-1.25*e*e*Math.sin(2*M*d2r));
+  const minutes=date.getUTCHours()*60+date.getUTCMinutes()+date.getUTCSeconds()/60;
+  const tst=(minutes+eqt+4*lon+1440)%1440;
+  const ha=(tst/4<0?tst/4+180:tst/4-180)*d2r;
+  const phi=lat*d2r;
+  const cosZ=Math.sin(phi)*Math.sin(decl)+Math.cos(phi)*Math.cos(decl)*Math.cos(ha);
+  const zen=Math.acos(Math.max(-1,Math.min(1,cosZ)));
+  let az=Math.acos(Math.max(-1,Math.min(1,((Math.sin(phi)*Math.cos(zen))-Math.sin(decl))/(Math.cos(phi)*Math.sin(zen)))))*r2d;
+  az=ha>0?norm(az+180):norm(540-az);
+  return {az,alt:90-zen*r2d};
+}
+const compass16=a=>["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(norm(a)/22.5)%16];
+function renderSun(){
+  const card=$("suncard");if(card.hidden||!S.loc)return;
+  const sp=sunPosition(new Date(),S.loc.lat,S.loc.lon);
+  $("sun-az").innerHTML=`${Math.round(sp.az)}° <small>${compass16(sp.az)}</small>`;
+  $("sun-alt").innerHTML=`${Math.round(sp.alt)}°`;
+  if(sp.alt<-1){$("sun-turn").textContent=bi("The sun is below the horizon now. Use a hand compass with the magnetic bearing, or try again in daylight.",T("sun_night"));$("sun-shadow").textContent="—";$("btn-suncal").hidden=true;return;}
+  const d=signedDiff(S.bearing,sp.az),abs=Math.round(Math.abs(d)),dir=d>0?"right":"left",dirZu=T(d>0?"right":"left");
+  $("sun-turn").textContent=abs<=3?bi("Face the sun: Ekuphumuleni is straight ahead.",T("sun_ahead")):bi(`Face the sun, then turn ${abs}° to the ${dir}.`,T("sun_turn",{n:abs,dir:dirZu}));
+  const sh=norm(sp.az+180),ds=signedDiff(S.bearing,sh),abs2=Math.round(Math.abs(ds));
+  $("sun-shadow").textContent=`A stick's shadow points to ${Math.round(sh)}° (${compass16(sh)}). Stand facing along the shadow, then turn ${abs2}° to the ${ds>0?"right":"left"}.`;
+
+// ===== COMPASS ENGINE: sources, facing vector, sensors, calibration, wake lock =====
+function screenAngle(){return (screen.orientation&&typeof screen.orientation.angle==="number")?screen.orientation.angle:(typeof window.orientation==="number"?window.orientation:0);}
+/* facing vector from device axes expressed in Earth coordinates (E,N,Up) */
+function facing(xE,xN,xU,yE,yN,yU,zE,zN,zU,th){
+  const st=Math.sin(th),ct=Math.cos(th);
+  const tE=st*xE+ct*yE,tN=st*xN+ct*yN,tU=st*xU+ct*yU;     // top edge of the screen
+  const w=tU*tU;                                          // 0 when flat, 1 when upright
+  return norm(Math.atan2(tE-w*zE,tN-w*zN)*R2D);           // add the back of the phone as it rises
+}
+function headingFromEuler(alpha,beta,gamma){
+  const a=alpha*D2R,b=(beta||0)*D2R,g=(gamma||0)*D2R;
+  const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);
+  return facing(ca*cg-sa*sb*sg, sa*cg+ca*sb*sg, -cb*sg,
+                -sa*cb, ca*cb, sb,
+                ca*sg+sa*sb*cg, sa*sg-ca*sb*cg, cb*cg, screenAngle()*D2R);
+}
+function headingFromQuat(q){ // device(screen) -> Earth, Earth x east, y north, z up
+  const [x,y,z,w]=q;
+  return facing(1-2*(y*y+z*z), 2*(x*y+w*z), 2*(x*z-w*y),
+                2*(x*y-w*z), 1-2*(x*x+z*z), 2*(y*z+w*x),
+                2*(x*z+w*y), 2*(y*z-w*x), 1-2*(x*x+y*y), 0);
+}
+/* smoothing */
+const SM={x:0,y:1,init:false,t:0};
+function feedHeading(h){
+  const now=performance.now(),r=h*D2R,cx=Math.sin(r),cy=Math.cos(r);
+  if(!SM.init){SM.x=cx;SM.y=cy;SM.init=true;}
+  else{const dt=Math.min(.5,Math.max(.001,(now-SM.t)/1000));
+    const gap=Math.abs(signedDiff(h,Math.atan2(SM.x,SM.y)*R2D));
+    const tau=gap>45?.06:.14;                            // follow big turns quickly, calm small jitter
+    const k=1-Math.exp(-dt/tau);SM.x+=k*(cx-SM.x);SM.y+=k*(cy-SM.y);}
+  SM.t=now;
+}
+function useHeading(value,source,isTrue){
+  const h=isTrue?value:norm(value+S.declination);
+  S.lastEvt=Date.now();feedHeading(h);
+  if(S.sensor!=="on"||S.src!==source){S.sensor="on";S.src=source;setChipCmp("on","Compass: on · "+SRC[source],"cmp_on");$("nocompass").hidden=true;if(source!=="rel")$("suncard").hidden=true;}
+  startLoop();
+}
+let loopOn=false;
+function startLoop(){if(loopOn)return;loopOn=true;requestAnimationFrame(frame);}
+function frame(){
+  if(SM.init&&S.sensor==="on"){
+    S.heading=norm(Math.atan2(SM.x,SM.y)*R2D);
+    drawNeedle();
+    const now=performance.now(),rd=Math.round(S.heading);
+    if(rd!==S.lastRound&&now-S.lastText>90){S.lastRound=rd;S.lastText=now;render();}
+  }
+  drawBubble();
+  requestAnimationFrame(frame);
+}
+function drawNeedle(){
+  if(S.heading==null)return;
+  const d1=signedDiff(-S.heading,S.dispDial);if(Math.abs(d1)>.05){S.dispDial+=d1;$("dial").style.transform=`rotate(${S.dispDial.toFixed(2)}deg)`;}
+  if(S.loc){const d2=signedDiff(norm(S.bearing-S.heading),S.dispPtr);if(Math.abs(d2)>.05){S.dispPtr+=d2;$("pointer").style.transform=`rotate(${S.dispPtr.toFixed(2)}deg)`;}}
+}
+function drawBubble(){
+  const gx=Math.max(-1,Math.min(1,S.gamma/30)),gy=Math.max(-1,Math.min(1,S.beta/30));
+  $("bubble").style.transform=`translate(calc(-50% + ${(gx*22).toFixed(1)}px), calc(-50% + ${(gy*22).toFixed(1)}px))`;
+}
+function onOrientation(e){
+  if(e.alpha===0&&e.beta===0&&e.gamma===0)return;          // placeholder events from phones without sensors
+  if(typeof e.beta==="number"){S.beta=e.beta;S.gamma=e.gamma||0;}
+  if(S.aosOn)return;                                      // Android orientation sensor already drives the dial
+  if(typeof e.webkitCompassHeading==="number"&&!isNaN(e.webkitCompassHeading)&&e.webkitCompassHeading>=0){
+    const acc=e.webkitCompassAccuracy,low=typeof acc==="number"&&(acc<0||acc>25);
+    if(low!==S.lowAcc){S.lowAcc=low;$("calib").hidden=!low;}
+    useHeading(norm(e.webkitCompassHeading+screenAngle()),"ios",false);return;}
+  if(typeof e.alpha!=="number"||isNaN(e.alpha))return;
+  const h=headingFromEuler(e.alpha,e.beta,e.gamma);
+  if(e.absolute===true||e.type==="deviceorientationabsolute"){useHeading(h,"abs",false);return;}
+  S.sawRel=true;S.relRaw=h;                                // relative only: usable once calibrated
+  if(S.src==="abs"||S.src==="ios")return;
+  if(S.relOffset!=null)useHeading(norm(h+S.relOffset),"rel",true);
+}
+function startAbsoluteSensor(){
+  if(!("AbsoluteOrientationSensor" in window))return;
+  try{
+    if(!S.aos){
+      const sensor=new AbsoluteOrientationSensor({frequency:30,referenceFrame:"screen"});
+      sensor.addEventListener("reading",()=>{if(!sensor.quaternion)return;S.aosOn=true;useHeading(headingFromQuat(sensor.quaternion),"aos",true);});
+      sensor.addEventListener("error",()=>{S.aosOn=false;});
+      S.aos=sensor;
+    }
+    S.aos.start();
+  }catch(e){S.aos=null;S.aosOn=false;}
+}
+function setChipCmp(cls,t,key){S.chip=[cls,t,key];$("chip-cmp").className="chip "+cls;$("chip-cmp-t").textContent=bi(t,key?T(key):"");}
+function showNoCompass(){$("nocompass").hidden=false;$("suncard").hidden=false;renderSunWhy();renderSun();render();}
+function startSensors(){
+  if(S.started)return;S.started=true;
+  const listen=()=>{
+    if("ondeviceorientationabsolute" in window)window.addEventListener("deviceorientationabsolute",onOrientation,true);
+    window.addEventListener("deviceorientation",onOrientation,true);
+    startAbsoluteSensor();
+    setChipCmp("warn","Compass: waiting for sensor…","cmp_wait");
+    setTimeout(()=>{
+      if(S.sensor==="on")return;
+      if(S.sawRel){S.sensor="rel";setChipCmp("warn","Compass: needs calibration","cmp_cal");S.sunWhy="rel";$("btn-northcal").hidden=false;}
+      else{S.sensor="none";setChipCmp("bad","Compass: not available","cmp_none");S.sunWhy="none";}
+      showNoCompass();
+    },4000);
+  };
+  if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+    DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")listen();else{S.sensor="denied";S.sunWhy="none";setChipCmp("bad","Compass: permission refused","cmp_denied");showNoCompass();}})
+      .catch(()=>{S.sensor="denied";S.sunWhy="none";setChipCmp("bad","Compass: permission refused · reload the page and allow motion access","cmp_denied");showNoCompass();});
+  }else listen();
+  keepAwake();
+}
+/* sensor stopped (screen lock, app switch, phone put down in some browsers) */
+setInterval(()=>{
+  if(S.sensor==="on"&&!document.hidden&&Date.now()-S.lastEvt>3000){S.sensor="paused";S.src=null;setChipCmp("warn","Compass: paused · move the phone","cmp_paused");if(S.aos)startAbsoluteSensor();}
+},1000);
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden)return;
+  SM.init=false;                                          // start fresh, no spinning catch-up
+  if(S.started){if(S.aos)startAbsoluteSensor();keepAwake();}
+});
+/* keep the screen on while aligning */
+let wakeLock=null;

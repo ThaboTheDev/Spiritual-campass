@@ -21,8 +21,12 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | --- | --- |
 | `lib/main.dart` | Entry point: portrait lock, `SharedPreferences`, `ProviderScope` |
 | `lib/app.dart` | Root `MaterialApp` (dark theme, clamped text scale) |
-| `lib/app_providers.dart` | App-wide providers (preferences, repositories, compass service, clock) |
-| `lib/core/l10n/strings.dart` | **Every** user-visible string, English + isiZulu |
+| `lib/app_providers.dart` | App-wide providers (preferences, repositories, sensors, wake lock, performance profile, clock) |
+| `lib/core/config/app_config.dart` | Feature flags (`kMembershipEnabled`, `kStoreBuild`), API / Supabase placeholders, tile-cache cap |
+| `lib/core/l10n/strings.dart` | **Every** user-visible string: English + authored isiZulu (+ translation key) |
+| `lib/core/l10n/app_language.dart` | Secondary languages (isiZulu / Portuguese / Chichewa / Bemba), `translations.json` loader, fallback |
+| `lib/core/perf/performance_profile.dart` | `low` / `normal` profile and the knobs it controls |
+| `lib/core/geo/heading_math.dart` | Facing math (flat → upright blend), tilt-compensated heading, gyro yaw, calibration offsets |
 | `lib/core/theme/app_theme.dart` | Colours, layout constants, Material 3 dark theme |
 | `lib/core/geo/coordinates.dart` | `GeoPoint`, `Angles`, the `Ekuphumuleni` constants |
 | `lib/core/geo/geo_math.dart` | Great-circle bearing, haversine distance, true ↔ magnetic |
@@ -36,22 +40,33 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/core/net/connectivity_probe.dart` | Tiny reachability probe for the map's offline notice |
 | `lib/data/models/centre.dart` | Centre model + JSON parsing |
 | `lib/data/repositories/centres_repository.dart` | Loads/sorts/groups `assets/centres.json` |
-| `lib/data/repositories/location_repository.dart` | geolocator wrapper (permissions, fixes, settings) |
-| `lib/data/local/preferences_store.dart` | Persisted manual location and locked msamo bearing |
-| `lib/services/compass_service.dart` | flutter_compass wrapper |
+| `lib/data/repositories/location_repository.dart` | geolocator wrapper (permissions, fixes, settings, speed/course) |
+| `lib/data/repositories/towns_repository.dart` | Loads/filters `assets/towns.json` |
+| `lib/data/local/preferences_store.dart` | Persisted manual location, locked bearing, language, Simple mode, entitlement cache |
+| `lib/services/compass_service.dart` | flutter_compass wrapper (rung 1) |
+| `lib/services/motion_sensors.dart` | sensors_plus wrapper (magnetometer / accelerometer / gyroscope) |
+| `lib/services/wake_lock_service.dart` | wakelock_plus wrapper |
+| `lib/services/device_profile_detector.dart` | device_info_plus → `DeviceClass` |
 | `lib/services/navigation_launcher.dart` | Apple Maps / Google Maps / tel: intents |
-| `lib/features/shell/app_shell.dart` | Five-tab shell (`IndexedStack`) |
-| `lib/features/compass/…` | Compass screen, controller, providers, dial, readout grid |
+| `lib/features/shell/app_shell.dart` | Five-tab shell (lazy `IndexedStack`, lifecycle → sensors) |
+| `lib/features/compass/…` | Compass screen, controller, providers, dial, level bubble, source chip, calibration, sun guidance |
+| `lib/features/compass/engine/…` | `HeadingSource`, `HeadingLadder`, the four sensor rungs |
 | `lib/features/msamo/…` | Msamo screen + lock controller |
-| `lib/features/location/…` | Live GPS, manual entry, pick-from-centres |
+| `lib/features/location/…` | Live GPS, manual entry, town picker, pick-from-centres |
+| `lib/features/towns/…` | Searchable grouped town picker |
+| `lib/features/settings/…` | Language switcher + Simple mode (shown on the Guide tab) |
+| `lib/features/membership/…` | Optional membership (Supabase OTP, `/api/me`, PayFast), behind `kMembershipEnabled` |
 | `lib/features/centres/…` | Map, clustering, search, nearest, grouped list, bottom sheet |
 | `lib/features/guide/…` | Guide screen (coordinates, steps, accuracy, about) |
 | `lib/widgets/…` | Header, bilingual text, cards, buttons, bottom navigation |
-| `assets/centres.json` | The centres list — add centres here, not in code |
-| `assets/logo.png` | Crest (replace with the official artwork) |
+| `assets/centres.json` | The 88 centres in 15 regions — add centres here, not in code |
+| `assets/towns.json` | Towns for the Location tab picker |
+| `assets/translations.json` | Secondary-language table (zu / pt / ny / bem), 116 keys |
+| `assets/fonts/` | Bundled IBM Plex Sans / Mono and Source Serif 4 (`tool/fetch_fonts.sh`) |
+| `assets/logo.png` (+ `2.0x/`, `3.0x/`) | Crest (replace with the official artwork) |
 | `platform_config/…` | Android manifest / Gradle, iOS Info.plist / Podfile |
 | `tool/apply_platform_config.sh` | Copies `platform_config/` over a Flutter scaffold |
-| `test/…` | Unit tests: bearing, distance, declination, sun, smoothing, JSON |
+| `test/…` | Unit tests: bearing, distance, declination, sun, smoothing, heading math, ladder, calibration, GPS, l10n, assets, profile |
 
 ---
 
@@ -158,6 +173,17 @@ published WMM2025 test values** (the full 100-vector file was used while
 developing it) and asserts that Southern African declinations are negative and
 inside the 17°–28° west range quoted in the guide.
 
+Added with the sensor ladder:
+
+| Test | Covers |
+| --- | --- |
+| `test/core/heading_math_test.dart` | Tilt-compensated heading from accelerometer + magnetometer vectors (flat and upright), yaw-rate sign, level bubble |
+| `test/features/heading_ladder_test.dart` | Failover ladder under `fake_async`: timeouts, absent sensors, stale → restart → next rung, provisional samples, restart |
+| `test/features/calibration_and_gps_test.dart` | Sun / north calibration offset math (true vs magnetic), GPS course accepted only while walking and flagged true-north |
+| `test/core/l10n_test.dart` | Fallback order chosen → authored isiZulu → file isiZulu → English; locale suggestion; all `S.*` keys exist in `translations.json` |
+| `test/data/centres_asset_test.dart`, `test/data/towns_repository_test.dart` | 88 centres / 15 regions with valid coordinates and unique ids; towns parsing, search and filtering |
+| `test/core/performance_profile_test.dart` | Profile detection and the Simple-mode override |
+
 ---
 
 ## 4. Release builds
@@ -183,11 +209,27 @@ Then replace the `signingConfig = signingConfigs.debug` line in
 (the standard Flutter snippet), and build:
 
 ```bash
-flutter build apk --release          # installable APK
-flutter build appbundle --release    # AAB for the Play Store
-# Outputs: build/app/outputs/flutter-apk/app-release.apk
-#          build/app/outputs/bundle/release/app-release.aab
+# Fonts once (bundled; no runtime download):
+bash tool/fetch_fonts.sh
+
+# Per-ABI APKs for sideloading on low-storage phones (arm64-v8a, armeabi-v7a):
+flutter build apk --release --split-per-abi
+# Outputs: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+#          build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+
+# Play Store bundle (Play serves the right ABI / density itself):
+flutter build appbundle --release
+# Output:  build/app/outputs/bundle/release/app-release.aab
+
+# Optional flags:
+#   --dart-define=STORE_BUILD=true        hide purchase UI (store builds)
+#   --dart-define=MEMBERSHIP_ENABLED=true turn the membership feature on
+#   --dart-define=MEMBERSHIP_API_BASE_URL=… SUPABASE_URL=… SUPABASE_ANON_KEY=…
 ```
+
+Release builds use R8 minification and resource shrinking (rules in
+`android/app/proguard-rules.pro`), `minSdk 24` (Android 7.0) and only the two
+ARM ABIs. The iOS deployment target is 13.0.
 
 ### iOS (macOS + Xcode)
 
@@ -237,6 +279,75 @@ kilometres on a 6371.0088 km sphere. The dial needle sits at
 
 ---
 
+## How the heading is found — the source ladder
+
+One `CompassController` feeds both the Compass and the Msamo screens. It walks a
+ladder of heading sources, best first, and drops a rung when a sensor is absent
+or produces no valid sample for ~3 s (`HeadingLadder`, pure Dart, tested with
+`fake_async`). A rung that goes quiet later is flagged **stale** ("Move the
+phone to wake the compass · Nyakazisa ifoni"), restarted once, then abandoned.
+
+| # | Source (status chip) | Reference | Declination | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | **Compass sensor** — `flutter_compass` fused heading | magnetic | applied | Android rotation vector / iOS `CLHeading` |
+| 2 | **Raw sensors** — magnetometer + accelerometer, tilt-compensated in Dart (`HeadingMath.tiltCompensatedHeading`) | magnetic | applied | Same math as Android's `getRotationMatrix`; the "facing" blend uses the top edge when flat and the back of the phone when upright |
+| 3 | **Turn sensor + calibration** — gyroscope (or rotation vector) integrated about the vertical, plus one tap on **Set: pointing at the sun** or **Set: pointing north** | true (sun) / magnetic (north) | only for north | Uncalibrated it shows the Set buttons and no heading; the smoother resets at calibration |
+| 4 | **GPS (walking)** — geolocator course, only when speed > 1 m/s with sane heading accuracy | true | never | "Walk a few steps to get direction · Hamba izinyathelo ezimbalwa"; also listened to opportunistically while rung 3 waits |
+| 5 | **Sun guidance** — no heading at all | — | — | Sun azimuth now, "face the sun then turn N°", stick-shadow method, hand-compass bearing (true & magnetic). Bearing / distance / declination keep working |
+
+Rules: WMM declination is added only to magnetic samples (rungs 1, 2, north-
+calibrated 3); GPS and sun-calibrated headings are already true. The wrap-aware
+smoother (`AngleSmoother`) and the UI throttle (`HeadingThrottle`, 33 ms normal /
+66 ms low profile) sit between the ladder and the dial. Level bubble
+("Flat · Ithe bha" when |pitch| < 8° and |roll| < 8°) runs on the accelerometer
+independently and is shown only while a sensor is active. The screen stays on
+(`wakelock_plus`) while the compass runs; sensors and the wake lock are released
+when the app goes to the background and restarted on resume.
+
+### Degradation matrix
+
+| Situation | What happens |
+| --- | --- |
+| No compass (magnetometer) | Rungs 1–2 are skipped; rung 3 asks for a one-tap Set (sun or north); walking gives GPS course; otherwise sun guidance. Bearings still shown |
+| No gyroscope | Rung 3 is skipped (rotation vector is tried first); GPS course while walking, else sun guidance |
+| No accelerometer | Rung 2 and the level bubble are unavailable; rung 1 (fused) still works if present; the gyro rung uses a vertical assumption |
+| No GPS / no fix | Compass still turns (magnetic heading); bearing, distance and declination wait for a manual location, a town from the picker or a centre |
+| No internet | Everything except map tiles works: compass, sun, guide, centres list, town picker. Map shows "Map unavailable offline"; cached tiles still draw (normal profile) |
+| Low RAM (≤ 2 GB, `isLowRamDevice`, Android ≤ 8.0, old iPhones) | `low` profile: 15 fps arrow, flat dial (no gradients / shadows / halo), no animations, 16 MB image cache, tighter clustering, tile cache off. Users can force it with **Battery saver · Simple mode** on the Guide tab |
+| Location denied / denied forever / services off | Distinct messages with a button to the right system screen; the dial still turns on magnetic heading |
+| Motion denied (iOS) or sensor stream errors | The rung fails over like an absent sensor; nothing crashes. `NSMotionUsageDescription` is set |
+
+### Low-end guidance
+
+* Tabs are built lazily: the map is not created until Centres is opened.
+* `RepaintBoundary` around the dial and the map; dial tick paths are cached per
+  size; `const` widgets throughout.
+* `ImageCache` limits follow the profile; the crest ships as 1x / 2x / 3x and is
+  decoded at display size.
+* Fonts are bundled (`GoogleFonts.config.allowRuntimeFetching = false`).
+* Text scale is clamped to 0.9–1.3; layouts are checked at 320 dp.
+* Map tiles use `userAgentPackageName = com.tshk.tshk_compass` and an optional
+  ~50 MB size-capped cache (off in the low profile).
+
+## Languages
+
+English is always the first line. The second line follows the language chosen
+on the Guide tab — **isiZulu (default), Português, Chichewa, Bemba** — loaded
+from `assets/translations.json` (116 keys). The choice is persisted; on first run
+it is suggested from the device locale (pt / ny / bem, else isiZulu). Fallback
+per string: chosen language → isiZulu authored in code → isiZulu in the file →
+English. All strings live in `lib/core/l10n/strings.dart` (`Bi(en, zu, key:)`).
+
+## Feature flags
+
+| Flag | Default | Effect |
+| --- | --- | --- |
+| `kMembershipEnabled` (`--dart-define=MEMBERSHIP_ENABLED`) | `false` | Shows the Membership card on the Guide tab: Supabase e-mail OTP sign-in, `/api/me`, PayFast checkout / cancel, offline entitlement cache (`flutter_secure_storage` for tokens) |
+| `kStoreBuild` (`--dart-define=STORE_BUILD`) | `false` | Hides every purchase / subscribe / cancel control; sign-in and status remain |
+| `MEMBERSHIP_API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` | placeholders | See `lib/core/config/app_config.dart` |
+
+---
+
 ## What you must supply
 
 1. **The crest artwork** — replace `assets/logo.png` with the official round
@@ -244,13 +355,11 @@ kilometres on a 6371.0088 km sphere. The dial needle sits at
    re-run `dart run flutter_launcher_icons` and
    `dart run flutter_native_splash:create`. The file in the repo is a
    placeholder generated for this build.
-2. **The full centres list with coordinates.** `assets/centres.json` ships with
-   the eight Gauteng centres you gave, using **approximate suburb/town
-   coordinates** — every entry is marked `"verified": false`. Please supply the
-   remaining centres (other provinces and any outside South Africa) and confirm
-   or correct the eight sets of coordinates, then flip `verified` to `true`.
-   The Zulu/Gauteng list needs: a street address for **Hammanskraal**, and
-   confirmation of the phone numbers as dialled from abroad (`+27 …`).
+2. **Verify the centre and town coordinates.** `assets/centres.json` now holds
+   the 88 centres in 15 regions from the web edition and `assets/towns.json` the
+   town list; both are the single source of truth for the map, the grouped list
+   and the pickers. The coordinates are as supplied and were not re-checked
+   against the ground.
 3. **Confirm the Msamo and Location behaviour.** Both are built as described
    below; please confirm this is what you want:
    * *Msamo*: shows the required true bearing and the matching magnetic bearing
@@ -275,16 +384,36 @@ kilometres on a 6371.0088 km sphere. The dial needle sits at
 
 ## Packages
 
-`flutter_riverpod` (state), `geolocator` (location), `flutter_compass`
-(magnetometer), `flutter_map` + `latlong2` + `flutter_map_marker_cluster` (map),
-`url_launcher` (directions/calls), `shared_preferences` (manual location, locked
-bearing), `google_fonts` (Source Serif 4 + IBM Plex Sans/Mono). Nothing else.
+`flutter_riverpod` (state), `geolocator` (location, GPS course),
+`flutter_compass` (fused heading), `sensors_plus` (raw sensors, level bubble),
+`wakelock_plus` (screen on), `device_info_plus` (performance profile),
+`flutter_map` + `latlong2` + `flutter_map_marker_cluster` (map), `url_launcher`
+(directions/calls/PayFast), `shared_preferences` (settings), `flutter_secure_storage`
++ `http` (membership, only active behind the flag), `google_fonts` (bundled
+Source Serif 4 + IBM Plex Sans/Mono, no runtime fetching).
 
 Riverpod is pinned to the 2.x line (`^2.6.1`) because that is the API the code
 was written against. If you upgrade to Riverpod 3, the only changes needed are
 cosmetic (the handwritten providers used here — `Provider`, `FutureProvider`,
 `StreamProvider`, `NotifierProvider` — are all still valid).
 
-The map uses CARTO's dark OpenStreetMap tiles with visible attribution. Check
-their terms if you expect heavy traffic, or switch the tile URL and the
-attribution in `lib/features/centres/widgets/centres_map.dart`.
+The map uses the standard OpenStreetMap raster tiles (darkened with a colour
+filter) with visible attribution and the `com.tshk.tshk_compass` user agent
+required by the OSM tile usage policy. For heavy traffic switch the URL in
+`lib/core/map_config.dart` to a keyed provider.
+
+## Could not be verified in this environment
+
+* No Flutter SDK was available where the code was written: the Dart files were
+  cross-checked by hand but **not compiled or run**. Run `flutter pub get`,
+  `flutter analyze` and `flutter test` first.
+* The 88 centre coordinates and the town coordinates are as supplied.
+* Portuguese, Chichewa and Bemba strings in `translations.json` are as supplied;
+  the new isiZulu strings written for the sensor ladder, settings and membership
+  need a fluent speaker's review.
+* Fonts are not committed; `tool/fetch_fonts.sh` downloads them (release URLs
+  may need updating).
+* Behaviour on specific low-end phones (Android 7 / 1 GB, iPhone 6s) and the
+  sensors_plus axis conventions on iOS were reasoned from documentation only.
+* The membership API is implemented from the contract, not against a live
+  server.

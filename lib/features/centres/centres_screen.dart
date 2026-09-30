@@ -13,6 +13,7 @@ import '../../widgets/app_header.dart';
 import '../../widgets/bilingual_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
+import '../../widgets/language_scope.dart';
 import '../location/location_controller.dart';
 import 'centres_providers.dart';
 import 'widgets/centre_card.dart';
@@ -53,6 +54,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final AsyncValue<List<Centre>> centresAsync = ref.watch(centresProvider);
     final AsyncValue<List<RegionGroup>> groupsAsync =
@@ -111,12 +113,12 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
-                    hintText: '${S.searchCentre.en} · ${S.searchCentre.zu}',
+                    hintText: S.searchCentre.inline,
                     suffixIcon: query.isEmpty
                         ? null
                         : IconButton(
                             icon: const Icon(Icons.close_rounded, size: 18),
-                            tooltip: '${S.close.en} · ${S.close.zu}',
+                            tooltip: S.close.inline,
                             onPressed: () {
                               _searchController.clear();
                               ref
@@ -270,8 +272,8 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
       SnackBar(
         content: Text(
           hasPoint
-              ? '${S.nearest.en} · ${S.nearest.zu}'
-              : '${S.locationNotSet.en} · ${S.locationNotSet.zu}',
+              ? S.nearest.inline
+              : S.locationNotSet.inline,
           style: const TextStyle(color: AppColors.textPrimary),
         ),
       ),

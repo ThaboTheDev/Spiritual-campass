@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../core/l10n/strings.dart';
 import '../core/theme/app_theme.dart';
+import 'language_scope.dart';
 
-/// English text with the isiZulu translation underneath it.
+/// English text with the secondary-language translation underneath it.
 ///
 /// This is how every label in the app is shown: English as the main text,
-/// isiZulu as a smaller, softer second line.
+/// the chosen second language (isiZulu by default) as a smaller, softer line.
+/// It rebuilds when the language changes (see [LanguageScope]).
 class BilingualText extends StatelessWidget {
   const BilingualText(
     this.text, {
@@ -43,6 +45,8 @@ class BilingualText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
+    final String secondary = text.secondary;
     final ThemeData theme = Theme.of(context);
     final TextStyle englishStyle =
         style ?? theme.textTheme.bodyMedium ?? const TextStyle();
@@ -55,7 +59,7 @@ class BilingualText extends StatelessWidget {
         );
 
     return Semantics(
-      label: semanticLabel ?? '${text.en}. ${text.zu}',
+      label: semanticLabel ?? '${text.en}. $secondary',
       child: ExcludeSemantics(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -69,7 +73,7 @@ class BilingualText extends StatelessWidget {
             ),
             SizedBox(height: spacing),
             Text(
-              text.zu,
+              secondary,
               style: zuluStyle,
               textAlign: textAlign,
               maxLines: maxLines,
@@ -121,6 +125,8 @@ class BilingualInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
+    final String secondary = text.secondary;
     final ThemeData theme = Theme.of(context);
     final TextStyle englishStyle =
         style ?? theme.textTheme.bodyMedium ?? const TextStyle();
@@ -132,14 +138,14 @@ class BilingualInline extends StatelessWidget {
         );
 
     return Semantics(
-      label: '${text.en}. ${text.zu}',
+      label: '${text.en}. $secondary',
       child: ExcludeSemantics(
         child: Text.rich(
           TextSpan(
             children: <TextSpan>[
               TextSpan(text: text.en, style: englishStyle),
               TextSpan(text: separator, style: zuluStyle),
-              TextSpan(text: text.zu, style: zuluStyle),
+              TextSpan(text: secondary, style: zuluStyle),
             ],
           ),
           textAlign: textAlign,
