@@ -86,20 +86,30 @@ class SettingsCard extends ConsumerWidget {
           const SizedBox(height: 12),
 
           // Simple mode.
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            value: simpleForced,
-            onChanged: (bool value) =>
-                ref.read(simpleModeProvider.notifier).set(value),
-            activeTrackColor: AppColors.accent.withValues(alpha: 0.5),
-            title: BilingualText(S.batterySaver, style: theme.textTheme.titleSmall),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: BilingualText(
-                S.batterySaverNote,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 12,
+          // The tile needs its own Material: SectionCard paints its
+          // background on a DecoratedBox that would otherwise sit between
+          // the ListTile and the nearest Material, hiding the ink splash
+          // (debug builds assert on this).
+          Material(
+            type: MaterialType.transparency,
+            child: SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: simpleForced,
+              onChanged: (bool value) =>
+                  ref.read(simpleModeProvider.notifier).set(value),
+              activeTrackColor: AppColors.accent.withValues(alpha: 0.5),
+              title: BilingualText(
+                S.batterySaver,
+                style: theme.textTheme.titleSmall,
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: BilingualText(
+                  S.batterySaverNote,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
