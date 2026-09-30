@@ -32,8 +32,13 @@ enum AppLanguage {
     if (code == null) {
       return fallback;
     }
+    final String normalized = code.trim().toLowerCase();
+    final String primary = normalized.split(RegExp(r'[-_]')).first;
     for (final AppLanguage language in values) {
-      if (language.code == code) {
+      if (language.code == normalized ||
+          language.localeCodes.contains(normalized) ||
+          language.code == primary ||
+          language.localeCodes.contains(primary)) {
         return language;
       }
     }

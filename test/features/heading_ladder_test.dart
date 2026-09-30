@@ -29,6 +29,7 @@ class _FakeSource implements HeadingSource {
 
   int starts = 0;
   int cancels = 0;
+  int emitted = 0;
   Timer? _timer;
   StreamController<HeadingSample>? _controller;
 
@@ -44,11 +45,10 @@ class _FakeSource implements HeadingSource {
   @override
   Stream<HeadingSample> start() {
     starts++;
-    int emitted = 0;
     late final StreamController<HeadingSample> controller;
     controller = StreamController<HeadingSample>(
       onListen: () {
-        if (silent) {
+        if (silent || (stopAfter != null && emitted >= stopAfter!)) {
           return;
         }
         _timer = Timer.periodic(period, (Timer t) {

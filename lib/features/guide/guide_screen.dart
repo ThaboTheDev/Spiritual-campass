@@ -8,6 +8,7 @@ import '../../widgets/bilingual_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
+import '../../widgets/nine_pointed_star.dart';
 import '../membership/widgets/membership_card.dart';
 import '../settings/widgets/settings_card.dart';
 
@@ -48,8 +49,10 @@ class GuideScreen extends StatelessWidget {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        const Icon(Icons.star_rounded,
-                            color: AppColors.gold, size: 16),
+                        const NinePointedStar(
+                          size: 16,
+                          color: AppColors.gold,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
