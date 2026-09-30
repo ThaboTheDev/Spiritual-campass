@@ -43,11 +43,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Only the two ABIs we ship. Use `flutter build apk --split-per-abi`
-            // for per-ABI APKs and `flutter build appbundle` for Play.
-            ndk {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-            }
+            // ABIs are NOT filtered here: an ndk abiFilters block conflicts with
+            // Flutter's --split-per-abi (which sets splits.abi). Pick ABIs on the CLI:
+            //   flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+            //   flutter build appbundle --release
         }
         debug {
             isMinifyEnabled = false

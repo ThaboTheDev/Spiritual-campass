@@ -214,7 +214,7 @@ Then replace the `signingConfig = signingConfigs.debug` line in
 bash tool/fetch_fonts.sh
 
 # Per-ABI APKs for sideloading on low-storage phones (arm64-v8a, armeabi-v7a):
-flutter build apk --release --split-per-abi
+flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
 # Outputs: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 #          build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
 
