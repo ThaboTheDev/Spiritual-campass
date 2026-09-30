@@ -19,7 +19,9 @@ android {
         applicationId = "com.tshk.tshk_compass"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Android 7.0 (Nougat). Explicit rather than flutter.minSdkVersion so
+        // a Flutter upgrade cannot silently drop the 1–2 GB phones we target.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         // Supplied by the Flutter Gradle Plugin from pubspec.yaml's `version:`.
         // The legacy `flutterVersionCode` / `flutterVersionName` project
@@ -33,9 +35,29 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-            // Minification and resource shrinking stay at their defaults (off):
-            // this repository ships no ProGuard rules file.
+            // Smaller APK for low-storage phones: R8 code shrinking plus
+            // resource shrinking. Keep rules live in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // Only the two ABIs we ship. Use `flutter build apk --split-per-abi`
+            // for per-ABI APKs and `flutter build appbundle` for Play.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
         }
+        debug {
+            isMinifyEnabled = false
+        }
+    }
+
+    // Fonts and JSON are already compressed; skip the dex/resource overhead of
+    // multiple densities we do not ship.
+    packaging {
+        resources.excludes += setOf("META-INF/*.kotlin_module", "kotlin/**")
     }
 }
 

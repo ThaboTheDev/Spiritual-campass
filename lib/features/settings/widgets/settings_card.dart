@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../app_providers.dart';
+import '../../../core/l10n/strings.dart';
+import '../../../core/perf/performance_profile.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../widgets/bilingual_text.dart';
+import '../../../widgets/cards.dart';
+import '../../../widgets/language_scope.dart';
+import '../language_controller.dart';
+
+/// Language switcher and the "Battery saver / Simple mode" switch.
+///
+/// Lives on the Guide tab so it needs no extra navigation.
+class SettingsCard extends ConsumerWidget {
+  const SettingsCard({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    LanguageScope.watch(context);
+    final ThemeData theme = Theme.of(context);
+    final AppLanguage language = ref.watch(languageProvider);
+    final bool simpleForced = ref.watch(simpleModeProvider);
+    final DeviceClass device = ref.watch(deviceClassProvider);
+    final bool autoLow = device.suggestedProfile == PerformanceProfile.low;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Semantics(
+            header: true,
+            child: Text(
+              '${S.settingsHeading.en.toUpperCase()} · '
+              '${S.settingsHeading.secondary.toUpperCase()}',
+              style: AppText.sectionHeader.copyWith(color: AppColors.accent),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Language.
+          BilingualText(S.secondaryLanguage, style: theme.textTheme.titleSmall),
+          const SizedBox(height: 4),
+          BilingualText(
+            S.secondaryLanguageNote,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final AppLanguage option in AppLanguage.values)
+                ChoiceChip(
+                  label: Text(option.nativeName),
+                  selected: option == language,
+                  onSelected: (bool selected) {
+                    if (selected) {
+                      ref.read(languageProvider.notifier).set(option);
+                    }
+                  },
+                  selectedColor: AppColors.accent.withValues(alpha: 0.18),
+                  labelStyle: TextStyle(
+                    color: option == language
+                        ? AppColors.accent
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                  ),
+                  side: BorderSide(
+                    color: option == language
+                        ? AppColors.accent
+                        : AppColors.border,
+                  ),
+                  backgroundColor: AppColors.surfaceAlt,
+                  showCheckmark: false,
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+
+          // Simple mode.
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: simpleForced,
+            onChanged: (bool value) =>
+                ref.read(simpleModeProvider.notifier).set(value),
+            activeTrackColor: AppColors.accent.withValues(alpha: 0.5),
+            title: BilingualText(S.batterySaver, style: theme.textTheme.titleSmall),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: BilingualText(
+                S.batterySaverNote,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          if (autoLow && !simpleForced)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: BilingualInline(
+                S.simpleModeAuto,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.gold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

@@ -4,12 +4,16 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../app_providers.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/geo/coordinates.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/map_config.dart';
+import '../../../core/perf/performance_profile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
+import '../../../widgets/language_scope.dart';
 import '../../location/location_controller.dart';
 import '../centres_providers.dart';
 import 'centre_bottom_sheet.dart';
@@ -142,8 +146,10 @@ class _CentresMapState extends ConsumerState<CentresMap> {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final AsyncValue<bool> online = ref.watch(onlineProvider);
     final bool offline = online.valueOrNull == false;
+    final PerfSettings perf = ref.watch(perfSettingsProvider);
 
     return SizedBox(
       height: widget.height,
@@ -152,6 +158,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
         child: Stack(
           children: <Widget>[
             Positioned.fill(
+              child: RepaintBoundary(
               child: FlutterMap(
                 mapController: _mapController,
                 options: const MapOptions(
@@ -169,6 +176,19 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                     urlTemplate: MapConfig.tileUrlTemplate,
                     userAgentPackageName: MapConfig.userAgentPackageName,
                     maxNativeZoom: MapConfig.maxNativeZoom,
+                    // Optional size-capped tile cache (about 50 MB); off in
+                    // the low profile to save storage and I/O.
+                    tileProvider: NetworkTileProvider(
+                      cachingProvider: perf.tileCacheEnabled
+                          ? BuiltInMapCachingProvider.getOrCreateInstance(
+                              maxCacheSize: kTileCacheMaxBytes,
+                            )
+                          : const DisabledMapCachingProvider(),
+                    ),
+                    // Keep the tiles light on weak GPUs: skip fade-in.
+                    tileDisplay: perf.animate
+                        ? const TileDisplay.fadeIn()
+                        : const TileDisplay.instantaneous(),
                     tileBuilder: (BuildContext context, Widget tileWidget, TileImage tile) {
                       return ColorFiltered(
                         colorFilter: MapConfig.darkMapFilter,
@@ -222,11 +242,19 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                   // Centres, clustered when zoomed out.
                   MarkerClusterLayerWidget(
                     options: MarkerClusterLayerOptions(
-                      maxClusterRadius: 45,
+                      maxClusterRadius: perf.clusterRadius,
                       size: const Size(38, 38),
                       alignment: Alignment.center,
                       padding: const EdgeInsets.all(40),
-                      maxZoom: 15,
+                      maxZoom: perf.clusterMaxZoom,
+                      animationsOptions: perf.animate
+                          ? const AnimationsOptions()
+                          : const AnimationsOptions(
+                              zoom: Duration.zero,
+                              fitBound: Duration.zero,
+                              centerMarker: Duration.zero,
+                              spiderfy: Duration.zero,
+                            ),
                       // Our pins handle their own taps, so the cluster layer
                       // must not wrap them in another gesture detector.
                       markerChildBehavior: true,
@@ -266,6 +294,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                     ],
                   ),
                 ],
+              ),
               ),
             ),
 
@@ -349,7 +378,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                             color: AppColors.textSecondary, size: 26),
                         const SizedBox(height: 10),
                         Text(
-                          '${S.offlineMap.en} · ${S.offlineMap.zu}',
+                          S.offlineMap.inline,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: AppColors.textSecondary,
@@ -367,7 +396,7 @@ class _CentresMapState extends ConsumerState<CentresMap> {
                           },
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: Text(
-                            '${S.retry.en} · ${S.retry.zu}',
+                            S.retry.inline,
                             style: const TextStyle(
                               color: AppColors.accent,
                               fontWeight: FontWeight.w600,
@@ -401,7 +430,7 @@ class _ZoomButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '${tooltip.en}, ${tooltip.zu}',
+      label: '${tooltip.en}, ${tooltip.secondary}',
       child: Material(
         color: AppColors.surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(10),

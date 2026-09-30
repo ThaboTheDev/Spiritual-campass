@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +19,7 @@ class CompassDial extends StatefulWidget {
     this.size = 288,
     this.aligned = false,
     this.active = true,
+    this.simple = false,
   });
 
   /// True heading of the device in degrees, or `null` when the sensor has not
@@ -34,6 +37,9 @@ class CompassDial extends StatefulWidget {
 
   /// Whether the compass has been started (a stopped dial is dimmed).
   final bool active;
+
+  /// Low performance profile: no gradient face, no halo, flat colours.
+  final bool simple;
 
   /// How close to the marker counts as "facing Ekuphumuleni".
   static const double alignmentToleranceDeg = 3.0;
@@ -76,7 +82,8 @@ class _CompassDialState extends State<CompassDial> {
       label: 'Compass dial. Bearing to Ekuphumuleni '
           '${widget.targetBearingDeg?.round() ?? 0} degrees. '
           '${aligned ? 'You are facing Ekuphumuleni.' : 'Turn to bring the needle to the marker.'}',
-      child: SizedBox(
+      child: RepaintBoundary(
+        child: SizedBox(
         width: size,
         height: size,
         child: Opacity(
@@ -91,6 +98,7 @@ class _CompassDialState extends State<CompassDial> {
                   headingRad: headingRad,
                   ringColor: ringColor,
                   aligned: aligned,
+                  simple: widget.simple,
                 ),
               ),
               Transform.rotate(
@@ -136,7 +144,11 @@ class _CompassDialState extends State<CompassDial> {
               // Fixed marker at the top.
               CustomPaint(
                 size: Size(size, size),
-                painter: _MarkerPainter(color: ringColor, aligned: aligned),
+                painter: _MarkerPainter(
+                  color: ringColor,
+                  aligned: aligned,
+                  simple: widget.simple,
+                ),
               ),
               // Centre hub.
               Container(
@@ -150,6 +162,7 @@ class _CompassDialState extends State<CompassDial> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -177,11 +190,42 @@ class _DialPainter extends CustomPainter {
     required this.headingRad,
     required this.ringColor,
     required this.aligned,
+    this.simple = false,
   });
 
   final double headingRad;
   final Color ringColor;
   final bool aligned;
+  final bool simple;
+
+  /// Tick marks are the same for every frame at a given size, so the paths
+  /// are built once per size and only rotated. Three paths: minor, major,
+  /// cardinal (different stroke widths / colours).
+  static final Map<double, List<Path>> _tickCache = <double, List<Path>>{};
+
+  static List<Path> _ticksFor(double radius) {
+    return _tickCache.putIfAbsent(radius, () {
+      final Path minor = Path();
+      final Path major = Path();
+      final Path cardinal = Path();
+      final double tickOuter = radius - 12;
+      for (int degrees = 0; degrees < 360; degrees += 5) {
+        final bool isCardinal = degrees % 90 == 0;
+        final bool isMajor = degrees % 45 == 0;
+        final double length = isCardinal ? 13.0 : (isMajor ? 9.0 : 5.0);
+        final double a = Angles.toRadians(degrees.toDouble());
+        final double sa = math.sin(a), ca = math.cos(a);
+        final Offset from = Offset(sa * tickOuter, -ca * tickOuter);
+        final Offset to =
+            Offset(sa * (tickOuter - length), -ca * (tickOuter - length));
+        final Path target = isCardinal ? cardinal : (isMajor ? major : minor);
+        target
+          ..moveTo(from.dx, from.dy)
+          ..lineTo(to.dx, to.dy);
+      }
+      return <Path>[minor, major, cardinal];
+    });
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -189,17 +233,21 @@ class _DialPainter extends CustomPainter {
     final double radius = size.width / 2.0;
 
     // Face.
-    canvas.drawCircle(
-      centre,
-      radius - 2,
-      Paint()
-        ..shader = const RadialGradient(
-          colors: <Color>[
-            AppColors.surfaceAlt,
-            AppColors.surface,
-          ],
-        ).createShader(Rect.fromCircle(center: centre, radius: radius)),
-    );
+    if (simple) {
+      canvas.drawCircle(centre, radius - 2, Paint()..color = AppColors.surface);
+    } else {
+      canvas.drawCircle(
+        centre,
+        radius - 2,
+        Paint()
+          ..shader = const RadialGradient(
+            colors: <Color>[
+              AppColors.surfaceAlt,
+              AppColors.surface,
+            ],
+          ).createShader(Rect.fromCircle(center: centre, radius: radius)),
+      );
+    }
 
     // Outer ring.
     canvas.drawCircle(
@@ -222,34 +270,31 @@ class _DialPainter extends CustomPainter {
     );
 
     // Tick marks: every 5°, longer every 45°, longest at the cardinals.
-    final double tickOuter = radius - 12;
-    for (int degrees = 0; degrees < 360; degrees += 5) {
-      final bool isCardinal = degrees % 90 == 0;
-      final bool isMajor = degrees % 45 == 0;
-      final double length = isCardinal ? 13.0 : (isMajor ? 9.0 : 5.0);
-      final Paint paint = Paint()
-        ..strokeWidth = isCardinal ? 2.0 : 1.0
-        ..color = isCardinal
-            ? AppColors.textSecondary
-            : AppColors.textMuted.withValues(alpha: 0.5);
-
-      canvas.save();
-      canvas.translate(centre.dx, centre.dy);
-      canvas.rotate(Angles.toRadians(degrees.toDouble()) - headingRad);
-      canvas.drawLine(
-        Offset(0, -tickOuter),
-        Offset(0, -(tickOuter - length)),
-        paint,
-      );
-      canvas.restore();
-    }
+    // Pre-built paths, rotated as a whole.
+    final List<Path> ticks = _ticksFor(radius);
+    final Paint minorPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = AppColors.textMuted.withValues(alpha: 0.5);
+    final Paint cardinalPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..color = AppColors.textSecondary;
+    canvas.save();
+    canvas.translate(centre.dx, centre.dy);
+    canvas.rotate(-headingRad);
+    canvas.drawPath(ticks[0], minorPaint);
+    canvas.drawPath(ticks[1], minorPaint);
+    canvas.drawPath(ticks[2], cardinalPaint);
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_DialPainter oldDelegate) =>
       oldDelegate.headingRad != headingRad ||
       oldDelegate.ringColor != ringColor ||
-      oldDelegate.aligned != aligned;
+      oldDelegate.aligned != aligned ||
+      oldDelegate.simple != simple;
 }
 
 /// The needle that points at Ekuphumuleni.
@@ -309,10 +354,15 @@ class _NeedlePainter extends CustomPainter {
 
 /// The fixed marker at the top of the dial, where the needle should end up.
 class _MarkerPainter extends CustomPainter {
-  const _MarkerPainter({required this.color, required this.aligned});
+  const _MarkerPainter({
+    required this.color,
+    required this.aligned,
+    this.simple = false,
+  });
 
   final Color color;
   final bool aligned;
+  final bool simple;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -336,7 +386,7 @@ class _MarkerPainter extends CustomPainter {
         ..color = AppColors.background.withValues(alpha: 0.8),
     );
 
-    if (aligned) {
+    if (aligned && !simple) {
       // A soft gold halo when the needle is on target.
       canvas.drawCircle(
         Offset(centreX, top + height + 6),
@@ -348,5 +398,7 @@ class _MarkerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MarkerPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.aligned != aligned;
+      oldDelegate.color != color ||
+      oldDelegate.aligned != aligned ||
+      oldDelegate.simple != simple;
 }

@@ -1,0 +1,497 @@
+[
+  {
+    "group": "Free State",
+    "towns": [
+      {
+        "name": "Bethlehem",
+        "lat": -28.23,
+        "lng": 28.307
+      },
+      {
+        "name": "Bloemfontein",
+        "lat": -29.117,
+        "lng": 26.216
+      },
+      {
+        "name": "Botshabelo",
+        "lat": -29.238,
+        "lng": 26.716
+      },
+      {
+        "name": "Clocolan",
+        "lat": -28.913,
+        "lng": 27.568
+      },
+      {
+        "name": "Ficksburg",
+        "lat": -28.876,
+        "lng": 27.878
+      },
+      {
+        "name": "Fouriesburg",
+        "lat": -28.62,
+        "lng": 28.21
+      },
+      {
+        "name": "Frankfort",
+        "lat": -27.278,
+        "lng": 28.495
+      },
+      {
+        "name": "Harrismith",
+        "lat": -28.273,
+        "lng": 29.13
+      },
+      {
+        "name": "Heilbron",
+        "lat": -27.283,
+        "lng": 27.97
+      },
+      {
+        "name": "Kroonstad",
+        "lat": -27.65,
+        "lng": 27.234
+      },
+      {
+        "name": "Ladybrand",
+        "lat": -29.194,
+        "lng": 27.457
+      },
+      {
+        "name": "Parys",
+        "lat": -26.9,
+        "lng": 27.455
+      },
+      {
+        "name": "Phuthaditjhaba (QwaQwa)",
+        "lat": -28.524,
+        "lng": 28.816
+      },
+      {
+        "name": "Reitz",
+        "lat": -27.803,
+        "lng": 28.428
+      },
+      {
+        "name": "Sasolburg",
+        "lat": -26.813,
+        "lng": 27.817
+      },
+      {
+        "name": "Senekal",
+        "lat": -28.32,
+        "lng": 27.62
+      },
+      {
+        "name": "Thaba Nchu",
+        "lat": -29.211,
+        "lng": 26.838
+      },
+      {
+        "name": "Welkom",
+        "lat": -27.977,
+        "lng": 26.735
+      },
+      {
+        "name": "Wepener",
+        "lat": -29.729,
+        "lng": 27.032
+      }
+    ]
+  },
+  {
+    "group": "Gauteng",
+    "towns": [
+      {
+        "name": "Benoni",
+        "lat": -26.189,
+        "lng": 28.321
+      },
+      {
+        "name": "Carletonville",
+        "lat": -26.361,
+        "lng": 27.398
+      },
+      {
+        "name": "Evaton",
+        "lat": -26.531,
+        "lng": 27.855
+      },
+      {
+        "name": "Germiston",
+        "lat": -26.218,
+        "lng": 28.166
+      },
+      {
+        "name": "Heidelberg",
+        "lat": -26.505,
+        "lng": 28.359
+      },
+      {
+        "name": "Johannesburg",
+        "lat": -26.204,
+        "lng": 28.047
+      },
+      {
+        "name": "Krugersdorp",
+        "lat": -26.1,
+        "lng": 27.775
+      },
+      {
+        "name": "Meyerton",
+        "lat": -26.558,
+        "lng": 28.017
+      },
+      {
+        "name": "Pretoria",
+        "lat": -25.746,
+        "lng": 28.188
+      },
+      {
+        "name": "Randfontein",
+        "lat": -26.18,
+        "lng": 27.7
+      },
+      {
+        "name": "Sebokeng",
+        "lat": -26.578,
+        "lng": 27.844
+      },
+      {
+        "name": "Soweto",
+        "lat": -26.268,
+        "lng": 27.858
+      },
+      {
+        "name": "Springs",
+        "lat": -26.25,
+        "lng": 28.4
+      },
+      {
+        "name": "Vanderbijlpark",
+        "lat": -26.711,
+        "lng": 27.838
+      },
+      {
+        "name": "Vereeniging",
+        "lat": -26.673,
+        "lng": 27.926
+      }
+    ]
+  },
+  {
+    "group": "KwaZulu-Natal",
+    "towns": [
+      {
+        "name": "Durban",
+        "lat": -29.859,
+        "lng": 31.022
+      },
+      {
+        "name": "Empangeni",
+        "lat": -28.762,
+        "lng": 31.893
+      },
+      {
+        "name": "Kokstad",
+        "lat": -30.547,
+        "lng": 29.424
+      },
+      {
+        "name": "Ladysmith",
+        "lat": -28.56,
+        "lng": 29.78
+      },
+      {
+        "name": "Newcastle",
+        "lat": -27.758,
+        "lng": 29.932
+      },
+      {
+        "name": "Pietermaritzburg",
+        "lat": -29.617,
+        "lng": 30.393
+      },
+      {
+        "name": "Port Shepstone",
+        "lat": -30.741,
+        "lng": 30.455
+      },
+      {
+        "name": "Richards Bay",
+        "lat": -28.78,
+        "lng": 32.038
+      },
+      {
+        "name": "Ulundi",
+        "lat": -28.335,
+        "lng": 31.416
+      },
+      {
+        "name": "Vryheid",
+        "lat": -27.769,
+        "lng": 30.791
+      }
+    ]
+  },
+  {
+    "group": "Mpumalanga",
+    "towns": [
+      {
+        "name": "eMalahleni (Witbank)",
+        "lat": -25.872,
+        "lng": 29.233
+      },
+      {
+        "name": "Ermelo",
+        "lat": -26.533,
+        "lng": 29.983
+      },
+      {
+        "name": "Mbombela (Nelspruit)",
+        "lat": -25.475,
+        "lng": 30.97
+      },
+      {
+        "name": "Middelburg",
+        "lat": -25.775,
+        "lng": 29.464
+      },
+      {
+        "name": "Secunda",
+        "lat": -26.516,
+        "lng": 29.196
+      },
+      {
+        "name": "Standerton",
+        "lat": -26.933,
+        "lng": 29.242
+      }
+    ]
+  },
+  {
+    "group": "Limpopo",
+    "towns": [
+      {
+        "name": "Mokopane",
+        "lat": -24.194,
+        "lng": 29.01
+      },
+      {
+        "name": "Polokwane",
+        "lat": -23.904,
+        "lng": 29.469
+      },
+      {
+        "name": "Thohoyandou",
+        "lat": -22.945,
+        "lng": 30.485
+      },
+      {
+        "name": "Tzaneen",
+        "lat": -23.833,
+        "lng": 30.163
+      }
+    ]
+  },
+  {
+    "group": "North West",
+    "towns": [
+      {
+        "name": "Klerksdorp",
+        "lat": -26.852,
+        "lng": 26.667
+      },
+      {
+        "name": "Mahikeng",
+        "lat": -25.865,
+        "lng": 25.644
+      },
+      {
+        "name": "Potchefstroom",
+        "lat": -26.715,
+        "lng": 27.097
+      },
+      {
+        "name": "Rustenburg",
+        "lat": -25.667,
+        "lng": 27.242
+      }
+    ]
+  },
+  {
+    "group": "Eastern Cape",
+    "towns": [
+      {
+        "name": "Aliwal North",
+        "lat": -30.693,
+        "lng": 26.712
+      },
+      {
+        "name": "East London",
+        "lat": -33.015,
+        "lng": 27.912
+      },
+      {
+        "name": "Gqeberha (Port Elizabeth)",
+        "lat": -33.961,
+        "lng": 25.615
+      },
+      {
+        "name": "Komani (Queenstown)",
+        "lat": -31.897,
+        "lng": 26.875
+      },
+      {
+        "name": "Makhanda",
+        "lat": -33.31,
+        "lng": 26.531
+      },
+      {
+        "name": "Mthatha",
+        "lat": -31.589,
+        "lng": 28.784
+      }
+    ]
+  },
+  {
+    "group": "Northern Cape",
+    "towns": [
+      {
+        "name": "Kimberley",
+        "lat": -28.728,
+        "lng": 24.762
+      },
+      {
+        "name": "Upington",
+        "lat": -28.447,
+        "lng": 21.256
+      }
+    ]
+  },
+  {
+    "group": "Western Cape",
+    "towns": [
+      {
+        "name": "Beaufort West",
+        "lat": -32.357,
+        "lng": 22.583
+      },
+      {
+        "name": "Cape Town",
+        "lat": -33.925,
+        "lng": 18.424
+      },
+      {
+        "name": "George",
+        "lat": -33.963,
+        "lng": 22.461
+      },
+      {
+        "name": "Paarl",
+        "lat": -33.734,
+        "lng": 18.964
+      },
+      {
+        "name": "Stellenbosch",
+        "lat": -33.933,
+        "lng": 18.86
+      }
+    ]
+  },
+  {
+    "group": "Lesotho & Eswatini",
+    "towns": [
+      {
+        "name": "Maseru",
+        "lat": -29.315,
+        "lng": 27.483
+      },
+      {
+        "name": "Mbabane",
+        "lat": -26.305,
+        "lng": 31.137
+      },
+      {
+        "name": "Manzini",
+        "lat": -26.496,
+        "lng": 31.38
+      }
+    ]
+  },
+  {
+    "group": "Elsewhere in Africa",
+    "towns": [
+      {
+        "name": "Gaborone",
+        "lat": -24.628,
+        "lng": 25.923
+      },
+      {
+        "name": "Francistown",
+        "lat": -21.17,
+        "lng": 27.508
+      },
+      {
+        "name": "Bulawayo",
+        "lat": -20.15,
+        "lng": 28.583
+      },
+      {
+        "name": "Harare",
+        "lat": -17.825,
+        "lng": 31.053
+      },
+      {
+        "name": "Windhoek",
+        "lat": -22.56,
+        "lng": 17.083
+      },
+      {
+        "name": "Maputo",
+        "lat": -25.966,
+        "lng": 32.583
+      },
+      {
+        "name": "Lusaka",
+        "lat": -15.387,
+        "lng": 28.323
+      },
+      {
+        "name": "Blantyre",
+        "lat": -15.786,
+        "lng": 35.006
+      },
+      {
+        "name": "Nairobi",
+        "lat": -1.292,
+        "lng": 36.822
+      },
+      {
+        "name": "Lagos",
+        "lat": 6.524,
+        "lng": 3.379
+      },
+      {
+        "name": "Accra",
+        "lat": 5.603,
+        "lng": -0.187
+      }
+    ]
+  },
+  {
+    "group": "Overseas",
+    "towns": [
+      {
+        "name": "London",
+        "lat": 51.507,
+        "lng": -0.128
+      },
+      {
+        "name": "New York",
+        "lat": 40.713,
+        "lng": -74.006
+      }
+    ]
+  }
+]

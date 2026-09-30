@@ -11,6 +11,9 @@ class GeoPoint {
     this.altitudeMetres,
     this.accuracyMetres,
     this.label,
+    this.speedMps,
+    this.courseDeg,
+    this.courseAccuracyDeg,
   });
 
   /// Degrees, -90 (south) .. 90 (north).
@@ -28,6 +31,45 @@ class GeoPoint {
   /// Optional human label, e.g. the name of a centre the point was taken from.
   final String? label;
 
+  /// Ground speed in metres per second, when the fix carries one.
+  final double? speedMps;
+
+  /// Course over ground in degrees from *true* north (0 .. 360), when the fix
+  /// carries one. GPS course is already true north — never add declination.
+  final double? courseDeg;
+
+  /// Estimated error of [courseDeg] in degrees, when the platform reports it.
+  final double? courseAccuracyDeg;
+
+  /// Whether this fix carries a usable course: moving faster than
+  /// [walkingSpeedMps] with a finite course and (if reported) a sane accuracy.
+  bool get hasWalkingCourse {
+    final double? speed = speedMps;
+    final double? course = courseDeg;
+    if (speed == null || course == null) {
+      return false;
+    }
+    if (!speed.isFinite || !course.isFinite || speed < walkingSpeedMps) {
+      return false;
+    }
+    if (course < 0 || course >= 360) {
+      return false;
+    }
+    final double? accuracy = courseAccuracyDeg;
+    // Android < 8 and some chipsets report 0 / NaN for "unknown": accept it,
+    // the speed gate already filters the noise of a standing phone.
+    if (accuracy != null && accuracy.isFinite && accuracy > 0) {
+      return accuracy <= maxCourseAccuracyDeg;
+    }
+    return true;
+  }
+
+  /// Below this speed the GPS course is meaningless (about a slow walk).
+  static const double walkingSpeedMps = 1.0;
+
+  /// Course accuracies worse than this are ignored.
+  static const double maxCourseAccuracyDeg = 45.0;
+
   /// Altitude in kilometres, defaulting to 0 when unknown (used by the WMM).
   double get altitudeKm => (altitudeMetres ?? 0.0) / 1000.0;
 
@@ -37,6 +79,9 @@ class GeoPoint {
     double? altitudeMetres,
     double? accuracyMetres,
     String? label,
+    double? speedMps,
+    double? courseDeg,
+    double? courseAccuracyDeg,
   }) {
     return GeoPoint(
       latitude: latitude ?? this.latitude,
@@ -44,6 +89,9 @@ class GeoPoint {
       altitudeMetres: altitudeMetres ?? this.altitudeMetres,
       accuracyMetres: accuracyMetres ?? this.accuracyMetres,
       label: label ?? this.label,
+      speedMps: speedMps ?? this.speedMps,
+      courseDeg: courseDeg ?? this.courseDeg,
+      courseAccuracyDeg: courseAccuracyDeg ?? this.courseAccuracyDeg,
     );
   }
 

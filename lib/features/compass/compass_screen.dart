@@ -7,6 +7,8 @@ import '../../core/geo/geo_math.dart';
 import '../../core/l10n/strings.dart';
 import '../../core/sun/facing_sun.dart';
 import '../../core/sun/sun_position.dart';
+import '../../app_providers.dart';
+import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
@@ -14,11 +16,16 @@ import '../../widgets/app_header.dart';
 import '../../widgets/bilingual_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
+import '../../widgets/language_scope.dart';
 import '../location/location_controller.dart';
 import 'compass_controller.dart';
 import 'compass_providers.dart';
+import 'widgets/calibration_controls.dart';
 import 'widgets/compass_dial.dart';
+import 'widgets/level_bubble.dart';
 import 'widgets/readout_grid.dart';
+import 'widgets/source_chip.dart';
+import 'widgets/sun_guidance_card.dart';
 
 /// The Compass tab: the dial, the start button and the readout grid.
 class CompassScreen extends ConsumerWidget {
@@ -26,8 +33,10 @@ class CompassScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    LanguageScope.watch(context);
     final CompassState compass = ref.watch(compassControllerProvider);
     final LocationState location = ref.watch(locationControllerProvider);
+    final PerfSettings perf = ref.watch(perfSettingsProvider);
     final TargetReading? target = ref.watch(targetReadingProvider);
     final double? declination = ref.watch(declinationProvider);
     final double? magneticBearing = ref.watch(magneticBearingProvider);
@@ -59,7 +68,25 @@ class CompassScreen extends ConsumerWidget {
 
               // Status line.
               _StatusLine(location: location, compass: compass),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
+
+              // Which sensor is driving the dial, and the level bubble.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Flexible(child: SourceChip(compass: compass)),
+                  if (compass.hasAttitude) ...<Widget>[
+                    const SizedBox(width: 12),
+                    LevelBubble(
+                      attitude: compass.attitude!,
+                      size: 36,
+                      travel: 11,
+                      animate: perf.animate,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
 
               // Dial (+ start button when the compass is off).
               _DialSection(
@@ -67,11 +94,44 @@ class CompassScreen extends ConsumerWidget {
                 heading: heading,
                 targetBearing: target?.bearingDeg,
                 aligned: aligned,
+                simple: !perf.useGradients,
                 onStart: () => ref
                     .read(compassControllerProvider.notifier)
                     .start(),
               ),
               const SizedBox(height: 16),
+
+              // Stale sensor: "Move the phone to wake the compass" + retry.
+              if (compass.isStale && compass.isActive) ...<Widget>[
+                InfoBanner(
+                  message: S.compassPaused,
+                  icon: Icons.vibration_outlined,
+                  color: AppColors.warning,
+                  actionLabel: S.retryCompass,
+                  onTap: () =>
+                      ref.read(compassControllerProvider.notifier).retry(),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // GPS rung: needs a few steps.
+              if (compass.waitingForWalk && !compass.isStale) ...<Widget>[
+                const InfoBanner(
+                  message: S.walkForDirection,
+                  icon: Icons.directions_walk,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Relative source: one-tap calibration.
+              if (compass.isActive &&
+                  (compass.awaitingCalibration ||
+                      compass.source ==
+                          HeadingSourceKind.relativeCalibrated)) ...<Widget>[
+                CalibrationControls(compass: compass),
+                const SizedBox(height: 12),
+              ],
 
               if (compass.needsCalibration && compass.isRunning) ...<Widget>[
                 const InfoBanner(
@@ -82,13 +142,24 @@ class CompassScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
               ],
 
-              if (compass.status == CompassStatus.noSensor) ...<Widget>[
-                const InfoBanner(
-                  message: S.noSensor,
-                  icon: Icons.sensors_off_outlined,
-                  color: AppColors.warning,
+              // No usable sensor (or waiting for calibration): use the sun.
+              if (compass.isSunOnly || compass.awaitingCalibration) ...<Widget>[
+                SunGuidanceCard(
+                  sun: sun,
+                  target: target,
+                  declinationDeg: declination,
+                  reason: compass.isSunOnly ? S.sunWhyNone : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                if (compass.isSunOnly)
+                  AppButton(
+                    label: S.retryCompass,
+                    variant: AppButtonVariant.text,
+                    icon: Icons.refresh,
+                    onPressed: () =>
+                        ref.read(compassControllerProvider.notifier).retry(),
+                  ),
+                const SizedBox(height: 8),
               ],
 
               if (_needsLocationHelp(location)) ...<Widget>[
@@ -201,7 +272,7 @@ class CompassScreen extends ConsumerWidget {
               if (compass.isActive) ...<Widget>[
                 const SizedBox(height: 12),
                 AppButton(
-                  label: const Bi('Stop compass', 'Misa ikhompasi'),
+                  label: S.stopCompass,
                   variant: AppButtonVariant.outlined,
                   icon: Icons.stop_circle_outlined,
                   onPressed: () =>
@@ -242,8 +313,7 @@ class CompassScreen extends ConsumerWidget {
       case SunFacing.left:
         return Formatters.bearingWithCardinal(sun.azimuthDeg);
       case SunFacing.unknown:
-        // TODO: Handle this case.
-        throw UnimplementedError();
+        return '—';
     }
   }
 
@@ -260,12 +330,11 @@ class CompassScreen extends ConsumerWidget {
       case SunFacing.behind:
         return S.sunBehind.en;
       case SunFacing.right:
-        return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° right';
+        return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° ${S.right.en}';
       case SunFacing.left:
-        return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° left';
+        return '${S.noFacingSun.en} · ${facing.turnDeg.round()}° ${S.left.en}';
       case SunFacing.unknown:
-        // TODO: Handle this case.
-        throw UnimplementedError();
+        return S.sunUnknown.en;
     }
   }
 }
@@ -292,14 +361,15 @@ class _StatusLine extends StatelessWidget {
 
     final Bi compassText = switch (compass.status) {
       CompassStatus.off => S.compassOff,
-      CompassStatus.starting =>
-        const Bi('Compass: starting…', 'Ikhompasi: iyaqala…'),
-      CompassStatus.noSensor =>
-        const Bi('Compass: no sensor', 'Ikhompasi: ayikho inzwa'),
+      CompassStatus.starting => S.compassWaiting,
+      CompassStatus.noSensor => S.compassNone,
       CompassStatus.locationRequired =>
         const Bi('Compass: needs location', 'Ikhompasi: idinga indawo'),
       CompassStatus.error =>
         const Bi('Compass: error', 'Ikhompasi: iphutha'),
+      CompassStatus.running when compass.awaitingCalibration =>
+        S.compassNeedsCal,
+      CompassStatus.running when !compass.hasHeading => S.compassWaiting,
       CompassStatus.running => compass.trueHeadingDeg != null
           ? Bi(
               'Compass: ${Formatters.bearing(compass.trueHeadingDeg)} true',
@@ -317,7 +387,7 @@ class _StatusLine extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            '${locationText.en} · ${locationText.zu}',
+            locationText.inline,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
               fontSize: 12.5,
@@ -325,7 +395,7 @@ class _StatusLine extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            '${compassText.en} · ${compassText.zu}',
+            compassText.inline,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
               fontSize: 12.5,
@@ -345,6 +415,7 @@ class _DialSection extends StatelessWidget {
     required this.targetBearing,
     required this.aligned,
     required this.onStart,
+    this.simple = false,
   });
 
   final CompassState compass;
@@ -352,6 +423,7 @@ class _DialSection extends StatelessWidget {
   final double? targetBearing;
   final bool aligned;
   final VoidCallback onStart;
+  final bool simple;
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +443,7 @@ class _DialSection extends StatelessWidget {
                   targetBearingDeg: targetBearing,
                   aligned: aligned,
                   active: active,
+                  simple: simple,
                   size: 288,
                 ),
                 if (!compass.isActive) ...<Widget>[
@@ -404,7 +477,8 @@ class _DialSection extends StatelessWidget {
                       ),
                     ],
                   ),
-                ] else if (compass.status == CompassStatus.starting) ...<Widget>[
+                ] else if (compass.status == CompassStatus.starting ||
+                    compass.paused) ...<Widget>[
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[

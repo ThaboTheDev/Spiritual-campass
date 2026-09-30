@@ -7,6 +7,9 @@ import '../../widgets/app_header.dart';
 import '../../widgets/bilingual_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
+import '../../widgets/language_scope.dart';
+import '../membership/widgets/membership_card.dart';
+import '../settings/widgets/settings_card.dart';
 
 /// The Guide tab: what the app is for, how to use it, and how accurate it is.
 class GuideScreen extends StatelessWidget {
@@ -14,6 +17,7 @@ class GuideScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
 
     return SafeArea(
@@ -171,6 +175,8 @@ class GuideScreen extends StatelessWidget {
                       width: 132,
                       height: 132,
                       fit: BoxFit.cover,
+                      cacheWidth:
+                          (132 * MediaQuery.devicePixelRatioOf(context)).round(),
                       errorBuilder: (BuildContext context, Object error,
                               StackTrace? stackTrace) =>
                           Container(
@@ -192,6 +198,10 @@ class GuideScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              const SettingsCard(),
+              const SizedBox(height: 16),
+              const MembershipCard(),
               const SizedBox(height: 14),
               Center(
                 child: Text(
@@ -221,7 +231,7 @@ class _Heading extends StatelessWidget {
     return Semantics(
       header: true,
       child: Text(
-        '${text.en.toUpperCase()} · ${text.zu.toUpperCase()}',
+        '${text.en.toUpperCase()} · ${text.secondary.toUpperCase()}',
         style: AppText.sectionHeader.copyWith(color: AppColors.accent),
       ),
     );

@@ -6,13 +6,16 @@ import '../../core/geo/coordinates.dart';
 import '../../core/l10n/strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/centre.dart';
+import '../../data/models/town.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/bilingual_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
+import '../../widgets/language_scope.dart';
 import '../centres/centres_providers.dart';
+import '../towns/town_picker_sheet.dart';
 import 'location_controller.dart';
 
 /// The Location tab: live GPS, a manual override, and picking a centre.
@@ -38,6 +41,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final LocationState location = ref.watch(locationControllerProvider);
     final GeoPoint? point = location.effectivePoint;
@@ -92,10 +96,10 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                     _DetailRow(
                       label: const Bi('Source', 'Umthombo'),
                       value: location.isManual
-                          ? '${S.sourceManual.en} · ${S.sourceManual.zu}'
+                          ? S.sourceManual.inline
                           : (point == null
                               ? '—'
-                              : '${S.sourceGps.en} · ${S.sourceGps.zu}'),
+                              : S.sourceGps.inline),
                     ),
                     if (point?.label != null) ...<Widget>[
                       const SizedBox(height: 4),
@@ -175,9 +179,8 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Use this when GPS is unavailable — for example indoors '
-                      'or when the phone has no signal.',
+                    BilingualText(
+                      S.manualNote,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textMuted,
                         fontSize: 12,
@@ -202,6 +205,14 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
                       label: S.save,
                       icon: Icons.save_outlined,
                       onPressed: () => _saveManual(context),
+                      expand: true,
+                    ),
+                    const SizedBox(height: 10),
+                    AppButton(
+                      label: S.pickTown,
+                      icon: Icons.location_city_outlined,
+                      variant: AppButtonVariant.outlined,
+                      onPressed: () => _pickTown(context),
                       expand: true,
                     ),
                     const SizedBox(height: 10),
@@ -238,7 +249,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
       return;
     }
     if (access == LocationAccess.whileInUse || access == LocationAccess.always) {
-      _snack(context, '${S.sourceGps.en} · ${S.sourceGps.zu}');
+      _snack(context, S.sourceGps.inline);
     }
   }
 
@@ -247,7 +258,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     if (!context.mounted) {
       return;
     }
-    _snack(context, '${S.useMyLocation.en} · ${S.useMyLocation.zu}');
+    _snack(context, S.useMyLocation.inline);
   }
 
   void _saveManual(BuildContext context) {
@@ -256,10 +267,10 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
 
     setState(() {
       _latitudeError = (latitude == null || latitude.abs() > 90)
-          ? '${S.invalidLatitude.en} · ${S.invalidLatitude.zu}'
+          ? S.invalidLatitude.inline
           : null;
       _longitudeError = (longitude == null || longitude.abs() > 180)
-          ? '${S.invalidLongitude.en} · ${S.invalidLongitude.zu}'
+          ? S.invalidLongitude.inline
           : null;
     });
 
@@ -279,7 +290,21 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     ref
         .read(locationControllerProvider.notifier)
         .useManualLocation(point, label: 'Manual entry');
-    _snack(context, '${S.saved.en} · ${S.saved.zu}');
+    _snack(context, S.saved.inline);
+  }
+
+  Future<void> _pickTown(BuildContext context) async {
+    final Town? town = await showTownPicker(context);
+    if (town == null || !context.mounted) {
+      return;
+    }
+    await ref
+        .read(locationControllerProvider.notifier)
+        .useManualLocation(town.point, label: town.name);
+    if (!context.mounted) {
+      return;
+    }
+    _snack(context, '${S.saved.en} · ${town.name}');
   }
 
   Future<void> _pickFromCentres(BuildContext context) async {
@@ -296,7 +321,7 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
       return;
     }
     if (centres.isEmpty) {
-      _snack(context, '${S.centresFailed.en} · ${S.centresFailed.zu}');
+      _snack(context, S.centresFailed.inline);
       return;
     }
 

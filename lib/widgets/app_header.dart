@@ -57,6 +57,10 @@ class AppHeader extends StatelessWidget {
                   width: logoSize,
                   height: logoSize,
                   fit: BoxFit.cover,
+                  // Decode at display size: keeps the image cache small.
+                  cacheWidth: (logoSize *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .round(),
                   errorBuilder: (BuildContext context, Object error,
                           StackTrace? stackTrace) =>
                       Container(

@@ -171,5 +171,10 @@ extension PositionToGeoPoint on Position {
         longitude: longitude,
         altitudeMetres: altitude,
         accuracyMetres: accuracy,
+        speedMps: speed.isFinite && speed >= 0 ? speed : null,
+        courseDeg: heading.isFinite && heading >= 0 ? heading : null,
+        courseAccuracyDeg: headingAccuracy.isFinite && headingAccuracy > 0
+            ? headingAccuracy
+            : null,
       );
 }
