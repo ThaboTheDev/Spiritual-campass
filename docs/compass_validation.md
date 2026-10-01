@@ -26,11 +26,14 @@ not been measured on any phone.**
 | CI: Android native tests | **Passed** | JUnit fixtures for the accuracy adapter: fifth-slot radians, invalid status, no invented degree bound |
 | CI: iOS build | **Passed** | Device and simulator builds on Xcode 26.3 with Swift Package Manager integration |
 | CI: iOS native tests | **Passed** | XCTest fixtures: Core Motion reference→device transpose into ENU, upright/back-north case, scalar sentinel rejection |
+| CI: SwiftPM assertion | **Passed** | After the `Podfile` removal, the build itself writes `FlutterGeneratedPluginSwiftPackage` into the Xcode project; CI greps for it and asserts no `Podfile` exists |
 | Platform helper tests | **5/5 passed** | Registration, idempotence, synchronized groups, unsupported/partial-project handling and overlay application on a temporary scaffold |
 | Configuration validator | **Passed** | Active/overlay equality, Swift registration IDs, portrait/scene configuration, translation keys/placeholders/mirrors, old dependency removal and bundled fonts |
 
-Run: [Compass checks 36881282504](https://github.com/ThaboTheDev/Spiritual-campass/actions/runs/36881282504)
-— the Flutter, Android and iOS jobs all succeeded.
+Runs: [36881282504](https://github.com/ThaboTheDev/Spiritual-campass/actions/runs/36881282504)
+was the first fully green run; [36882828507](https://github.com/ThaboTheDev/Spiritual-campass/actions/runs/36882828507)
+repeated it on the final commit. The Flutter job reported `+293: All tests passed!`
+(292 tests before the fixes below: 291 passing and 1 failing).
 
 Two pre-existing breakages were fixed along the way because they blocked that run:
 
