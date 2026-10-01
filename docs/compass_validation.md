@@ -26,14 +26,16 @@ not been measured on any phone.**
 | CI: Android native tests | **Passed** | JUnit fixtures for the accuracy adapter: fifth-slot radians, invalid status, no invented degree bound |
 | CI: iOS build | **Passed** | Device and simulator builds on Xcode 26.3 with Swift Package Manager integration |
 | CI: iOS native tests | **Passed** | XCTest fixtures: Core Motion reference→device transpose into ENU, upright/back-north case, scalar sentinel rejection |
+| CI: Android release artifacts | **Passed** | `flutter build apk --release --split-per-abi` and `flutter build appbundle --release` with `isMinifyEnabled`/`isShrinkResources` on: `app-armeabi-v7a-release.apk` 28,958,700 B, `app-arm64-v8a-release.apk` 31,365,768 B, `app-release.aab` 67,761,417 B. Icon font tree-shaken 1,645,184 → 12,116 B. The R8 keep rules are exercised only here |
+| CI: iOS release build | **Passed** | `flutter build ios --release --no-codesign` |
 | CI: SwiftPM assertion | **Passed** | After the `Podfile` removal, the build itself writes `FlutterGeneratedPluginSwiftPackage` into the Xcode project; CI greps for it and asserts no `Podfile` exists |
 | Platform helper tests | **5/5 passed** | Registration, idempotence, synchronized groups, unsupported/partial-project handling and overlay application on a temporary scaffold |
 | Configuration validator | **Passed** | Active/overlay equality, Swift registration IDs, portrait/scene configuration, translation keys/placeholders/mirrors, old dependency removal and bundled fonts |
 
-Runs: [36881282504](https://github.com/ThaboTheDev/Spiritual-campass/actions/runs/36881282504)
-was the first fully green run; [36882828507](https://github.com/ThaboTheDev/Spiritual-campass/actions/runs/36882828507)
-repeated it on the final commit. The Flutter job reported `+293: All tests passed!`
-(292 tests before the fixes below: 291 passing and 1 failing).
+Run [36909988720](https://github.com/ThaboTheDev/Spiritual-campass/actions/runs/36909988720)
+is the fullest green run: all three jobs succeeded, including the release builds above. The
+Flutter job reported `+293: All tests passed!` (292 tests before the fixes below: 291
+passing and 1 failing).
 
 Two pre-existing breakages were fixed along the way because they blocked that run:
 
@@ -50,8 +52,12 @@ Two pre-existing breakages were fixed along the way because they blocked that ru
   measurements have been collected. Simulators and CI cannot replace this.
 - **Language review:** new isiZulu/Portuguese safety guidance needs fluent review; new
   Chichewa/Bemba copy currently falls back to English.
-- **Release builds:** only debug builds were compiled. Release obfuscation, ProGuard rules
-  and store signing are untested.
+- **Store signing and upload:** release artifacts build and are debug-signed, because no
+  upload keystore belongs in this repository. Play/App Store signing, upload and rollout are
+  untested.
+- **Known benign CI noise:** building the APK and the bundle in one Gradle session prints
+  `Caught exception: Already watching path: .../android`. The build still succeeds and both
+  artifacts are asserted non-empty afterwards.
 
 Use the commands and mandatory device matrix in [compass_accuracy.md](compass_accuracy.md).
 Record device-specific p50/p95/max error and false-confirmation counts before release. A
