@@ -124,7 +124,9 @@ dart run flutter_native_splash:create
 
 ### iOS
 
-* Xcode 26.1+ is required by the current native dependencies; CI selects Xcode 26.3.
+* `device_info_plus` 13.2.0 calls `NSProcessInfo.isiOSAppOnVision`, which only
+  exists in an iOS 26 SDK: Xcode 16.4 fails to compile it, Xcode 26.3 builds.
+  CI selects Xcode 26.3 explicitly.
 * `NSLocationWhenInUseUsageDescription` and `NSMotionUsageDescription`, both
   phrased so that adding the isiZulu line is easy.
 * `LSApplicationQueriesSchemes` includes `maps`, `http`, `https` and `tel`.
