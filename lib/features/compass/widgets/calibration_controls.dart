@@ -5,8 +5,8 @@ import '../../../core/l10n/strings.dart';
 import '../../../core/sun/sun_position.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../widgets/app_button.dart';
-import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
+import '../../../widgets/localized_text.dart';
 import '../compass_controller.dart';
 import '../compass_providers.dart';
 
@@ -23,7 +23,7 @@ class CalibrationControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final SunPosition? sun = ref.watch(sunPositionProvider).valueOrNull;
-    final bool sunUp = sun != null && sun.elevationDeg >= -1;
+    final bool sunUp = sun != null && sun.canAnchorHeading;
 
     if (!compass.awaitingCalibration) {
       if (compass.source != HeadingSourceKind.relativeCalibrated ||
@@ -72,13 +72,20 @@ class CalibrationControls extends ConsumerWidget {
               height: 1.45,
             ),
           ),
+          const SizedBox(height: 8),
+          LocalizedText(S.sunSafety, style: theme.textTheme.bodySmall),
+          if (!sunUp) ...<Widget>[
+            const SizedBox(height: 6),
+            LocalizedText(
+              S.sunAnchorUnavailable,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 12),
           AppButton(
-            label: sunUp ? S.setToSun : S.sunBelowHorizonShort,
+            label: S.setToSun,
             icon: Icons.wb_sunny_outlined,
-            onPressed: sunUp
-                ? () => _set(context, ref, toSun: true)
-                : null,
+            onPressed: sunUp ? () => _set(context, ref, toSun: true) : null,
             expand: true,
           ),
           const SizedBox(height: 8),
@@ -95,16 +102,19 @@ class CalibrationControls extends ConsumerWidget {
   }
 
   void _set(BuildContext context, WidgetRef ref, {required bool toSun}) {
-    final CompassController controller =
-        ref.read(compassControllerProvider.notifier);
-    final bool ok = toSun ? controller.calibrateToSun() : controller.calibrateToNorth();
+    final CompassController controller = ref.read(
+      compassControllerProvider.notifier,
+    );
+    final bool ok = toSun
+        ? controller.calibrateToSun()
+        : controller.calibrateToNorth();
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
             content: Text(
-              toSun ? S.sunNightLong.text : S.waitingForHeading.text,
+              S.headingCalibrationFailed.text,
               style: const TextStyle(color: AppColors.textPrimary),
             ),
           ),

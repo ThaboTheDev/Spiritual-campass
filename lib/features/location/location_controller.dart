@@ -99,13 +99,18 @@ class LocationState {
 class LocationController extends Notifier<LocationState> {
   StreamSubscription<GeoPoint>? _subscription;
   bool _disposed = false;
+  int _generation = 0;
+  Future<LocationAccess>? _starting;
+  late LocationRepository _repository;
 
   @override
   LocationState build() {
+    _repository = ref.read(locationRepositoryProvider);
     ref.onDispose(() {
       _disposed = true;
-      _subscription?.cancel();
-      _subscription = null;
+      _generation++;
+      _repository.cancelPendingFixes();
+      unawaited(_cancelSubscription());
     });
 
     final GeoPoint? stored = ref.watch(preferencesStoreProvider).manualLocation;
@@ -118,92 +123,114 @@ class LocationController extends Notifier<LocationState> {
     );
   }
 
-  LocationRepository get _repository => ref.read(locationRepositoryProvider);
-
   /// Asks for permission, takes one fix and keeps tracking.
   ///
   /// Returns the access state afterwards so callers can explain what happened
   /// (for example "location services are off").
-  Future<LocationAccess> startTracking() async {
+  Future<LocationAccess> startTracking() {
+    if (_starting != null) {
+      return _starting!;
+    }
     if (state.tracking) {
-      return state.access;
+      return Future<LocationAccess>.value(state.access);
     }
+    final int generation = ++_generation;
+    final Future<LocationAccess> pending = _startTracking(generation);
+    _starting = pending;
+    pending.then((_) {
+      if (identical(_starting, pending)) {
+        _starting = null;
+      }
+    });
+    return pending;
+  }
+
+  Future<LocationAccess> _startTracking(int generation) async {
     state = state.copyWith(loading: true, clearError: true);
-
-    final LocationAccess access = await _repository.requestAccess();
-    if (_disposed) {
-      return access;
-    }
-    state = state.copyWith(access: access);
-
-    if (!access.canRequestFix) {
+    bool current() => !_disposed && generation == _generation;
+    try {
+      final LocationAccess access = await _repository.requestAccess();
+      if (!current()) {
+        return access;
+      }
+      state = state.copyWith(access: access);
+      if (!access.canRequestFix) {
+        state = state.copyWith(loading: false);
+        return access;
+      }
+      final GeoPoint? cached = await _repository.getLastKnownPoint();
+      if (!current()) {
+        return access;
+      }
+      if (cached != null) {
+        _acceptFix(cached);
+      }
+      await _subscribe(generation);
+      if (!current()) {
+        return access;
+      }
+      final GeoPoint? point = await _repository.getCurrentPoint();
+      if (!current()) {
+        return access;
+      }
+      if (point != null) {
+        _acceptFix(point);
+      }
       state = state.copyWith(loading: false);
       return access;
+    } catch (error) {
+      if (current()) {
+        _onError(error);
+      }
+      return _disposed ? LocationAccess.unknown : state.access;
     }
-
-    // Show something immediately, even if it is a cached fix, so the compass
-    // has a position while the GPS warms up.
-    final GeoPoint? lastKnown = await _repository.getLastKnownPoint();
-    if (_disposed) {
-      return access;
-    }
-    if (lastKnown != null) {
-      state = state.copyWith(gpsPoint: lastKnown, source: LocationSource.gps);
-    }
-
-    await _subscribe();
-    if (_disposed) {
-      return access;
-    }
-
-    final GeoPoint? current = await _repository.getCurrentPoint();
-    if (_disposed) {
-      return access;
-    }
-    state = state.copyWith(
-      gpsPoint: current ?? state.gpsPoint,
-      source: (current ?? state.gpsPoint) != null ? LocationSource.gps : state.source,
-      loading: false,
-    );
-    return access;
   }
 
   /// Takes a single fresh fix without starting continuous tracking.
   Future<LocationAccess> refreshOnce() async {
+    final int generation = _generation;
     state = state.copyWith(loading: true, clearError: true);
-    final LocationAccess access = await _repository.requestAccess();
-    if (_disposed) {
-      return access;
-    }
-    state = state.copyWith(access: access);
-    if (!access.canRequestFix) {
+    try {
+      final LocationAccess access = await _repository.requestAccess();
+      if (_disposed || generation != _generation) {
+        return access;
+      }
+      state = state.copyWith(access: access);
+      if (!access.canRequestFix) {
+        state = state.copyWith(loading: false);
+        return access;
+      }
+      final GeoPoint? point = await _repository.getCurrentPoint();
+      if (_disposed || generation != _generation) {
+        return access;
+      }
+      if (point != null) {
+        _acceptFix(point);
+      }
       state = state.copyWith(loading: false);
       return access;
+    } catch (error) {
+      if (!_disposed && generation == _generation) {
+        _onError(error);
+      }
+      return _disposed ? LocationAccess.unknown : state.access;
     }
-    final GeoPoint? point = await _repository.getCurrentPoint();
-    if (_disposed) {
-      return access;
-    }
-    state = state.copyWith(
-      gpsPoint: point ?? state.gpsPoint,
-      source: (point ?? state.gpsPoint) != null ? LocationSource.gps : state.source,
-      loading: false,
-    );
-    return access;
   }
 
   /// Stops listening for updates. The last fix is kept.
   void stopTracking() {
-    _subscription?.cancel();
-    _subscription = null;
+    _generation++;
+    _starting = null;
+    _repository.cancelPendingFixes();
+    unawaited(_cancelSubscription());
     if (!_disposed) {
-      state = state.copyWith(tracking: false);
+      state = state.copyWith(tracking: false, loading: false);
     }
   }
 
   /// Saves a manually entered location and uses it from now on.
   Future<void> useManualLocation(GeoPoint point, {String? label}) async {
-    final GeoPoint stored = label == null ? point : point.copyWith(label: label);
+    final GeoPoint stored = point.copyWith(label: label, isApproximate: true);
     await ref.read(preferencesStoreProvider).saveManualLocation(stored);
     if (_disposed) {
       return;
@@ -241,17 +268,55 @@ class LocationController extends Notifier<LocationState> {
     await _repository.openAppSettings();
   }
 
-  Future<void> _subscribe() async {
-    await _subscription?.cancel();
-    _subscription =
-        _repository.positionStream.listen(_onPosition, onError: _onError);
+  Future<void> _cancelSubscription() async {
+    final StreamSubscription<GeoPoint>? subscription = _subscription;
+    _subscription = null;
+    if (subscription != null) {
+      try {
+        await subscription.cancel().timeout(const Duration(seconds: 1));
+      } catch (_) {
+        /* Native cancellation must not trap a new session. */
+      }
+    }
+  }
+
+  Future<void> _subscribe(int generation) async {
+    await _cancelSubscription();
+    if (_disposed || generation != _generation) {
+      return;
+    }
+    _subscription = _repository.positionStream.listen(
+      (GeoPoint point) {
+        if (generation == _generation) {
+          _onPosition(point);
+        }
+      },
+      onError: (Object error) {
+        if (generation == _generation) {
+          _onError(error);
+        }
+      },
+      onDone: () {
+        if (!_disposed && generation == _generation) {
+          _subscription = null;
+          state = state.copyWith(tracking: false, loading: false);
+        }
+      },
+    );
     if (!_disposed) {
       state = state.copyWith(tracking: true);
     }
   }
 
-  void _onPosition(GeoPoint point) {
-    if (_disposed) {
+  void _onPosition(GeoPoint point) => _acceptFix(point);
+
+  void _acceptFix(GeoPoint point) {
+    if (_disposed || !point.isValid) {
+      return;
+    }
+    final DateTime? previous = state.gpsPoint?.timestamp;
+    if (previous != null &&
+        (point.timestamp == null || point.timestamp!.isBefore(previous))) {
       return;
     }
     state = state.copyWith(
@@ -269,6 +334,7 @@ class LocationController extends Notifier<LocationState> {
     if (_disposed) {
       return;
     }
+    unawaited(_cancelSubscription());
     state = state.copyWith(
       loading: false,
       tracking: false,
@@ -279,9 +345,8 @@ class LocationController extends Notifier<LocationState> {
 
 /// The live location state.
 final NotifierProvider<LocationController, LocationState>
-    locationControllerProvider =
-    NotifierProvider<LocationController, LocationState>(
-        LocationController.new);
+locationControllerProvider =
+    NotifierProvider<LocationController, LocationState>(LocationController.new);
 
 /// The point every bearing and distance is measured from, or `null`.
 final Provider<GeoPoint?> effectiveLocationProvider = Provider<GeoPoint?>(

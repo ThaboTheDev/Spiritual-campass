@@ -4,45 +4,44 @@ import '../../app_providers.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/sun/sun_position.dart';
-import '../../core/wmm/wmm.dart';
+import '../../core/wmm/wmm_context.dart';
 import '../location/location_controller.dart';
 import 'compass_controller.dart';
 
 /// Declination at the user's position, altitude and date, in degrees.
 ///
 /// Positive is east, negative is west — across Southern Africa it is negative,
-/// typically between about -19° and -28°. Recomputed when the position changes
-/// or every 10 minutes ([coarseClockProvider]), never per frame.
+/// typically between about -19° and -28°. A shared cache refreshes harmonics
+/// on date / substantial position changes. Validity is checked every second.
 final Provider<double?> declinationProvider = Provider<double?>((ref) {
   final GeoPoint? point = ref.watch(effectiveLocationProvider);
-  ref.watch(coarseClockProvider); // refresh as the date creeps forward
-  if (point == null) {
-    return null;
-  }
-  return Wmm2025.declinationDeg(
-    latitudeDeg: point.latitude,
-    longitudeDeg: point.longitude,
-    altitudeKm: point.altitudeKm,
-    when: DateTime.now(),
-  );
+  ref.watch(navigationClockProvider);
+  final MagneticContext context = ref
+      .read(wmmContextCacheProvider)
+      .evaluate(point, ref.read(compassClockProvider)());
+  return context.declinationDeg;
 });
 
 /// True bearing and distance to Ekuphumuleni from the user's position.
-final Provider<TargetReading?> targetReadingProvider =
-    Provider<TargetReading?>((ref) {
-  final GeoPoint? point = ref.watch(effectiveLocationProvider);
-  if (point == null) {
-    return null;
-  }
-  return GeoMath.readingTo(point, Ekuphumuleni.point);
-});
+final Provider<TargetReading?> targetReadingProvider = Provider<TargetReading?>(
+  (ref) {
+    final GeoPoint? point = ref.watch(effectiveLocationProvider);
+    final DateTime at =
+        ref.watch(navigationClockProvider).valueOrNull ??
+        ref.read(compassClockProvider)();
+    if (point == null || !point.isValid) {
+      return null;
+    }
+    return GeoMath.readingTo(point, Ekuphumuleni.point, at: at);
+  },
+);
 
 /// Magnetic bearing to Ekuphumuleni, for a hand compass that has not been
 /// corrected: `magnetic = true − declination`.
 final Provider<double?> magneticBearingProvider = Provider<double?>((ref) {
   final TargetReading? reading = ref.watch(targetReadingProvider);
   final double? declination = ref.watch(declinationProvider);
-  if (reading == null || declination == null) {
+  if (reading == null || reading.isNearTarget || declination == null) {
     return null;
   }
   return GeoMath.trueToMagnetic(reading.bearingDeg, declination);
@@ -54,24 +53,27 @@ final Provider<double?> magneticBearingProvider = Provider<double?>((ref) {
 /// observer as much as on the time.
 final StreamProvider<SunPosition?> sunPositionProvider =
     StreamProvider<SunPosition?>((ref) async* {
-  final GeoPoint? point = ref.watch(effectiveLocationProvider);
-  if (point == null) {
-    yield null;
-    return;
-  }
-  yield _sunAt(point);
-  yield* Stream<SunPosition?>.periodic(
-    const Duration(seconds: 1),
-    (_) => _sunAt(ref.read(effectiveLocationProvider)),
-  );
-});
+      final GeoPoint? point = ref.watch(effectiveLocationProvider);
+      if (point == null || !point.isValid) {
+        yield null;
+        return;
+      }
+      yield _sunAt(point, at: ref.read(compassClockProvider)());
+      yield* Stream<SunPosition?>.periodic(
+        const Duration(seconds: 1),
+        (_) => _sunAt(
+          ref.read(effectiveLocationProvider),
+          at: ref.read(compassClockProvider)(),
+        ),
+      );
+    });
 
-SunPosition? _sunAt(GeoPoint? point) {
-  if (point == null) {
+SunPosition? _sunAt(GeoPoint? point, {DateTime? at}) {
+  if (point == null || !point.isValid) {
     return null;
   }
   return SunCalculator.calculate(
-    at: DateTime.now().toUtc(),
+    at: (at ?? DateTime.now()).toUtc(),
     latitudeDeg: point.latitude,
     longitudeDeg: point.longitude,
   );
@@ -84,5 +86,5 @@ SunPosition? _sunAt(GeoPoint? point) {
 /// the dial still turns.
 final Provider<double?> dialHeadingProvider = Provider<double?>((ref) {
   final CompassState compass = ref.watch(compassControllerProvider);
-  return compass.trueHeadingDeg ?? compass.magneticHeadingDeg;
+  return compass.dialHeadingDeg;
 });

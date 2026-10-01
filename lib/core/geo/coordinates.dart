@@ -14,6 +14,9 @@ class GeoPoint {
     this.speedMps,
     this.courseDeg,
     this.courseAccuracyDeg,
+    this.timestamp,
+    this.speedAccuracyMps,
+    this.isApproximate = false,
   });
 
   /// Degrees, -90 (south) .. 90 (north).
@@ -41,37 +44,70 @@ class GeoPoint {
   /// Estimated error of [courseDeg] in degrees, when the platform reports it.
   final double? courseAccuracyDeg;
 
-  /// Whether this fix carries a usable course: moving faster than
-  /// [walkingSpeedMps] with a finite course and (if reported) a sane accuracy.
-  bool get hasWalkingCourse {
-    final double? speed = speedMps;
-    final double? course = courseDeg;
-    if (speed == null || course == null) {
+  /// Acquisition time, not the time a cached fix was received by the app.
+  final DateTime? timestamp;
+  final double? speedAccuracyMps;
+  final bool isApproximate;
+
+  bool get isValid =>
+      latitude.isFinite &&
+      longitude.isFinite &&
+      latitude >= -90 &&
+      latitude <= 90 &&
+      longitude >= -180 &&
+      longitude <= 180;
+
+  bool isFreshAt(
+    DateTime now, {
+    Duration maxAge = const Duration(seconds: 30),
+  }) {
+    if (timestamp == null) {
       return false;
     }
-    if (!speed.isFinite || !course.isFinite || speed < walkingSpeedMps) {
-      return false;
-    }
-    if (course < 0 || course >= 360) {
-      return false;
-    }
-    final double? accuracy = courseAccuracyDeg;
-    // Android < 8 and some chipsets report 0 / NaN for "unknown": accept it,
-    // the speed gate already filters the noise of a standing phone.
-    if (accuracy != null && accuracy.isFinite && accuracy > 0) {
-      return accuracy <= maxCourseAccuracyDeg;
-    }
-    return true;
+    final Duration age = now.difference(timestamp!);
+    return age <= maxAge && age >= const Duration(milliseconds: -250);
   }
 
-  /// Below this speed the GPS course is meaningless (about a slow walk).
-  static const double walkingSpeedMps = 1.0;
+  /// A fresh, reasonably accurate moving fix. Course can still be absent.
+  bool hasMovementFixAt(DateTime now) {
+    final double? speed = speedMps;
+    final double? accuracy = accuracyMetres;
+    final double? speedError = speedAccuracyMps;
+    return isValid &&
+        isFreshAt(now, maxAge: const Duration(seconds: 3)) &&
+        speed != null &&
+        speed.isFinite &&
+        speed >= walkingSpeedMps &&
+        accuracy != null &&
+        accuracy.isFinite &&
+        accuracy > 0 &&
+        accuracy <= 25 &&
+        (speedError == null ||
+            (speedError.isFinite && speedError >= 0 && speedError < speed / 2));
+  }
 
-  /// Course accuracies worse than this are ignored.
-  static const double maxCourseAccuracyDeg = 45.0;
+  bool hasWalkingCourseAt(DateTime now) {
+    final double? course = courseDeg;
+    final double? accuracy = courseAccuracyDeg;
+    return hasMovementFixAt(now) &&
+        course != null &&
+        course.isFinite &&
+        course >= 0 &&
+        course < 360 &&
+        (accuracy == null ||
+            (accuracy.isFinite &&
+                accuracy > 0 &&
+                accuracy <= maxCourseAccuracyDeg));
+  }
+
+  bool get hasWalkingCourse => hasWalkingCourseAt(DateTime.now());
+  static const double walkingSpeedMps = 1.2;
+  static const double maxCourseAccuracyDeg = 30.0;
 
   /// Altitude in kilometres, defaulting to 0 when unknown (used by the WMM).
-  double get altitudeKm => (altitudeMetres ?? 0.0) / 1000.0;
+  double get altitudeKm => altitudeMetres != null && altitudeMetres!.isFinite
+      ? altitudeMetres!.clamp(-1000, 850000) / 1000
+      : 0;
 
   GeoPoint copyWith({
     double? latitude,
@@ -82,6 +118,9 @@ class GeoPoint {
     double? speedMps,
     double? courseDeg,
     double? courseAccuracyDeg,
+    DateTime? timestamp,
+    double? speedAccuracyMps,
+    bool? isApproximate,
   }) {
     return GeoPoint(
       latitude: latitude ?? this.latitude,
@@ -92,6 +131,9 @@ class GeoPoint {
       speedMps: speedMps ?? this.speedMps,
       courseDeg: courseDeg ?? this.courseDeg,
       courseAccuracyDeg: courseAccuracyDeg ?? this.courseAccuracyDeg,
+      timestamp: timestamp ?? this.timestamp,
+      speedAccuracyMps: speedAccuracyMps ?? this.speedAccuracyMps,
+      isApproximate: isApproximate ?? this.isApproximate,
     );
   }
 
@@ -102,16 +144,28 @@ class GeoPoint {
       other.longitude == longitude &&
       other.altitudeMetres == altitudeMetres &&
       other.accuracyMetres == accuracyMetres &&
-      other.label == label;
+      other.label == label &&
+      other.timestamp == timestamp &&
+      other.speedMps == speedMps &&
+      other.courseDeg == courseDeg &&
+      other.courseAccuracyDeg == courseAccuracyDeg &&
+      other.speedAccuracyMps == speedAccuracyMps &&
+      other.isApproximate == isApproximate;
 
   @override
   int get hashCode => Object.hash(
-        latitude,
-        longitude,
-        altitudeMetres,
-        accuracyMetres,
-        label,
-      );
+    latitude,
+    longitude,
+    altitudeMetres,
+    accuracyMetres,
+    label,
+    timestamp,
+    speedMps,
+    courseDeg,
+    courseAccuracyDeg,
+    speedAccuracyMps,
+    isApproximate,
+  );
 
   @override
   String toString() =>
@@ -129,7 +183,10 @@ abstract final class Ekuphumuleni {
   static const double longitude = 27.62453;
 
   /// The target as a [GeoPoint].
-  static const GeoPoint point = GeoPoint(latitude: latitude, longitude: longitude);
+  static const GeoPoint point = GeoPoint(
+    latitude: latitude,
+    longitude: longitude,
+  );
 
   /// Coordinates in degrees / minutes / seconds (English letters; the UI uses
   /// `Formatters.dmsPair` so Portuguese shows `L` for east).

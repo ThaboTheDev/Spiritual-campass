@@ -6,9 +6,9 @@ import '../../../core/geo/geo_math.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/sun/sun_position.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
+import '../../../widgets/localized_text.dart';
 
 /// Rung 5, "Sun guidance": how to face Ekuphumuleni with no heading sensor.
 ///
@@ -60,12 +60,21 @@ class SunGuidanceCard extends StatelessWidget {
 
     final List<Widget> lines = <Widget>[];
 
-    if (target == null || sun == null) {
+    if (target?.isNearTarget ?? false) {
+      lines.add(LocalizedText(S.nearDestination, style: body));
+    } else if (target == null || sun == null) {
       lines.add(LocalizedText(S.notSetHint, style: body));
     } else if (sun.elevationDeg < -1) {
       lines.add(LocalizedText(S.sunNightLong, style: body));
+    } else if (!sun.canAnchorHeading) {
+      lines.add(LocalizedText(S.sunAnchorUnavailable, style: body));
     } else {
-      final double delta = Angles.shortestDelta(sun.azimuthDeg, target.bearingDeg);
+      lines.add(LocalizedText(S.sunSafety, style: body));
+      lines.add(const SizedBox(height: 6));
+      final double delta = Angles.shortestDelta(
+        sun.azimuthDeg,
+        target.bearingDeg,
+      );
       final int turn = delta.abs().round();
       lines.add(
         LocalizedText(
@@ -96,7 +105,8 @@ class SunGuidanceCard extends StatelessWidget {
       }
     }
 
-    final double? magnetic = (target != null && declinationDeg != null)
+    final double? magnetic =
+        (target != null && !target.isNearTarget && declinationDeg != null)
         ? GeoMath.trueToMagnetic(target.bearingDeg, declinationDeg!)
         : null;
 
@@ -107,8 +117,11 @@ class SunGuidanceCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Icon(Icons.wb_sunny_outlined,
-                  size: 18, color: AppColors.gold),
+              const Icon(
+                Icons.wb_sunny_outlined,
+                size: 18,
+                color: AppColors.gold,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: LocalizedText(

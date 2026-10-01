@@ -47,14 +47,14 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/data/repositories/location_repository.dart` | geolocator wrapper (permissions, fixes, settings, speed/course) |
 | `lib/data/repositories/towns_repository.dart` | Loads/filters `assets/towns.json` |
 | `lib/data/local/preferences_store.dart` | Persisted manual location, locked bearing, language, Simple mode, entitlement cache, per-account "trial page seen" flag |
-| `lib/services/compass_service.dart` | flutter_compass wrapper (rung 1) |
+| `lib/services/compass_service.dart` | App-owned native heading channels, explicit reference and diagnostics |
 | `lib/services/motion_sensors.dart` | sensors_plus wrapper (magnetometer / accelerometer / gyroscope) |
 | `lib/services/wake_lock_service.dart` | wakelock_plus wrapper |
 | `lib/services/device_profile_detector.dart` | device_info_plus → `DeviceClass` |
 | `lib/services/navigation_launcher.dart` | Apple Maps / Google Maps / tel: intents |
 | `lib/features/shell/app_shell.dart` | Five-tab shell (lazy `IndexedStack`, lifecycle → sensors) |
 | `lib/features/compass/…` | Compass screen, controller, providers, dial, level bubble, source chip, calibration, sun guidance |
-| `lib/features/compass/engine/…` | `HeadingSource`, `HeadingLadder`, the four sensor rungs |
+| `lib/features/compass/engine/…` | Quality-aware phone sources and separately selected GPS travel direction |
 | `lib/features/msamo/…` | Msamo screen + lock controller |
 | `lib/features/location/…` | Live GPS, manual entry, town picker, pick-from-centres |
 | `lib/features/towns/…` | Searchable grouped town picker |
@@ -67,42 +67,37 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `assets/translations.json` | Translation tables (zu / pt / ny / bem), one entry per `S.*` key |
 | `assets/fonts/` | Bundled IBM Plex Sans / Mono and Source Serif 4 (`tool/fetch_fonts.sh`) |
 | `assets/logo.png` (+ `2.0x/`, `3.0x/`) | Crest (replace with the official artwork) |
-| `platform_config/…` | Android manifest / Gradle, iOS Info.plist / Podfile |
-| `tool/apply_platform_config.sh` | Copies `platform_config/` over a Flutter scaffold |
+| `platform_config/…` | Mirrors of native compass bridges, registration, lifecycle and platform settings |
+| `tool/apply_platform_config.sh` | Applies overlays and registers the Swift bridge in the existing Xcode project |
 | `test/…` | Unit tests: bearing, distance, declination, sun, smoothing, heading math, ladder, calibration, GPS, l10n, assets, profile, auth client, gate state machine, gate widgets, admin tools, centres repository |
 
 ---
 
 ## 1. Set the project up
 
-This repository contains the Dart sources, the assets and the platform
-configuration, but not the generated native scaffolding (Gradle wrapper,
-`Runner.xcodeproj`, …). Generate it once, then apply the config from this repo:
+Use **Flutter 3.44.0 / Dart 3.12 or newer**. Android and iOS scaffolds are
+already checked in; do not regenerate them for a normal checkout.
 
 ```bash
 cd Spiritual-campass
-
-# 1. install dependencies (also writes .dart_tool and the plugin registrants)
-flutter pub get
-
-# 2. generate android/ and ios/ into a throwaway project …
-cd ..
-flutter create --org com.tshk --project-name tshk_compass \
-    --platforms=android,ios tshk_scaffold
-cd -
-
-# 3. … copy the generated folders in …
-cp -R ../tshk_scaffold/android .
-cp -R ../tshk_scaffold/ios .
-
-# 4. … and overwrite them with this repository's configuration
-./tool/apply_platform_config.sh
-
 flutter pub get
 ```
 
-> `flutter create` refuses to overwrite an existing `pubspec.yaml`, which is why
-> the scaffold is generated elsewhere and copied in.
+If you deliberately regenerate a native scaffold, back up project/signing/test
+configuration first, generate into a throwaway project and copy only the
+platform folders. Then run:
+
+```bash
+bash tool/apply_platform_config.sh
+python3 tool/check_compass_config.py
+flutter pub get
+```
+
+The overlay includes the app-owned Kotlin/Swift compass bridges. Python 3 is
+required to register `CompassPlugin.swift` in an ordinary Xcode project; the
+helper is idempotent and also supports synchronized Runner groups. It does not
+replace the whole Xcode project. Retain the native test targets/sources when
+regenerating; overlays contain production configuration, not the full scaffold.
 
 Then generate the launcher icon and the native splash (both configured in
 `pubspec.yaml`):
@@ -114,9 +109,9 @@ dart run flutter_native_splash:create
 
 ### Android
 
-* `minSdk` is inherited from `flutter.minSdkVersion` (24 in Flutter 3.44), which
-  is above the 23 that geolocator and flutter_compass need — nothing to
-  configure.
+* `minSdk` is inherited from `flutter.minSdkVersion` (24 in Flutter 3.44).
+* `MainActivity` registers the app-owned `CompassPlugin`; there is no
+  `flutter_compass` dependency. Rotation-vector capability is checked at runtime.
 * There is exactly one app build script, `android/app/build.gradle.kts`, and it
   takes `versionCode` / `versionName` from the Flutter Gradle Plugin
   (`flutter.versionCode` / `flutter.versionName`). Do not add a Groovy
@@ -129,12 +124,19 @@ dart run flutter_native_splash:create
 
 ### iOS
 
+* `device_info_plus` 13.2.0 calls `NSProcessInfo.isiOSAppOnVision`, which only
+  exists in an iOS 26 SDK: Xcode 16.4 fails to compile it, Xcode 26.3 builds.
+  CI selects Xcode 26.3 explicitly.
 * `NSLocationWhenInUseUsageDescription` and `NSMotionUsageDescription`, both
   phrased so that adding the isiZulu line is easy.
 * `LSApplicationQueriesSchemes` includes `maps`, `http`, `https` and `tel`.
 * Portrait only (`UISupportedInterfaceOrientations`).
-* `Podfile` sets iOS 13.0 and `BYPASS_PERMISSION_LOCATION_ALWAYS=1` for
-  geolocator, so no "Always" location key is required.
+* iOS plugins are integrated with **Swift Package Manager** (Flutter 3.44
+  default); the project declares iOS 13.0 and only
+  `NSLocationWhenInUseUsageDescription`, which is what geolocator asks for.
+  The first `flutter run` / `flutter build ios` writes that integration into
+  `ios/Runner.xcodeproj/project.pbxproj` and the shared scheme — commit those
+  changes when they appear.
 
 ---
 
@@ -158,18 +160,31 @@ First run notes:
   motion & orientation; Android asks for location (fine + coarse together).
 * On a simulator the compass reports no sensor. The app keeps working: true
   bearing, magnetic bearing, distance and declination are still shown.
-* `google_fonts` downloads Source Serif 4 / IBM Plex Sans the first time it
-  paints and caches them. Offline it falls back to the platform font, so text
-  still renders. To be fully offline from the first launch, bundle the fonts and
-  drop `google_fonts` (see "Notes" below).
+* Fonts are bundled in `assets/fonts`; runtime Google Fonts downloads are
+  disabled.
+* **Phone direction** and **Travel direction** are different modes. GPS is
+  never silently substituted for the direction the phone faces.
+* Unknown/stale/approximate data must not show a precision-alignment claim.
+  See [accuracy and device validation](docs/compass_accuracy.md).
 
 ---
 
 ## 3. Tests
 
 ```bash
+python3 tool/check_compass_config.py
+python3 -m unittest discover -s tool/tests -v
+flutter analyze --no-fatal-infos
 flutter test
 ```
+
+The compass CI workflow also builds Android/iOS and runs JUnit/XCTest for the
+native bridge conversions. New regressions cover confidence, quaternion
+tracking, freshness, filter lag, conservative alignment, source recovery,
+location races/cleanup and dial semantics/haptics. See
+[validation status](docs/compass_validation.md) and the
+[required physical-device protocol](docs/compass_accuracy.md#physical-device-acceptance-protocol--required-before-release).
+A syntax check or green simulator build does **not** establish sensor accuracy.
 
 `test/core/wmm_test.dart` checks the WMM implementation against **10 of NOAA's
 published WMM2025 test values** (the full 100-vector file was used while
@@ -212,7 +227,7 @@ EOF
 ```
 
 Then replace the `signingConfig = signingConfigs.debug` line in
-`android/app/build.gradle` with a real `signingConfigs { release { … } }` block
+`android/app/build.gradle.kts` with a real `signingConfigs { release { … } }` block
 (the standard Flutter snippet), and build:
 
 ```bash
@@ -262,11 +277,11 @@ Before shipping, bump `version:` in `pubspec.yaml` (e.g. `1.0.1+2`).
 port of the NOAA/NCEI spherical-harmonic evaluation (degree and order 12,
 Schmidt semi-normalised Legendre recursion, WGS84 geodetic → geocentric
 conversion, secular variation to the requested decimal year), using the official
-WMM2025 coefficient file bundled in `wmm_coefficients.dart`. Verified against
-NOAA's published test values: worst case **0.005°** in declination and
-**0.001 nT** in horizontal intensity over 100 vectors. Valid 2025.0 – 2030.0;
-`kWmmEpoch` and `kWmm2025Coefficients` are the two things to replace when WMM
-2030 ships.
+WMM2025 coefficient file bundled in `wmm_coefficients.dart`. Numerical
+regressions compare NOAA test values; they do not measure a phone's compass
+error. Valid from 2025-01-01 UTC to **before** 2030-01-01 UTC. The engine warns
+outside that window. The coefficients, epoch, validity and associated tests
+must be updated when the next model ships.
 
 **About the "17° to 28° west" figure.** With WMM2025 the real values are:
 Johannesburg −20.6° (2026), Pretoria −20.0°, Ekuphumuleni −24.9°, Bloemfontein
@@ -276,9 +291,9 @@ drifted about 1° west every five years. `test/core/wmm_test.dart` asserts
 today's values, and the guide text quotes both the historic range and the
 current examples.
 
-**Sun position** follows the NOAA Solar Calculator (Reda & Andreas)
-formulation, including the equation of time and atmospheric refraction. Checked
-against the solstice/equinox declinations (±23.44° / 0°), the published
+**Sun position** uses NOAA-style solar equations, including the equation of
+time and refracted elevation. Azimuth uses geometric elevation to avoid
+refraction/distorted horizon geometry. Numerical tests cover the solstice/equinox declinations (±23.44° / 0°), the published
 equation-of-time curve (±0.5 min), `elevation = 90 − |lat − dec|` at solar noon,
 polar day/night, and the hemisphere of the noon sun.
 
@@ -289,43 +304,52 @@ kilometres on a 6371.0088 km sphere. The dial needle sits at
 
 ---
 
-## How the heading is found — the source ladder
+## How the heading is found
 
-One `CompassController` feeds both the Compass and the Msamo screens. It walks a
-ladder of heading sources, best first, and drops a rung when a sensor is absent
-or produces no valid sample for ~3 s (`HeadingLadder`, pure Dart, tested with
-`fake_async`). A rung that goes quiet later is flagged **stale** ("Move the
-phone to wake the compass · Nyakazisa ifoni"), restarted once, then abandoned.
+One `CompassController` feeds Compass and Msamo. Every sample carries its north
+reference. Declination is applied only to magnetic readings; already-true GPS
+and sun anchors are not corrected again. The shared
+[alignment policy](lib/core/geo/alignment_policy.dart) accounts for freshness,
+settling, reported heading error, smoothing residual, WMM and origin uncertainty
+before allowing a 3° confirmation. Unknown error is not precision.
 
-| # | Source (status chip) | Reference | Declination | Notes |
-| --- | --- | --- | --- | --- |
-| 1 | **Compass sensor** — `flutter_compass` fused heading | magnetic | applied | Android rotation vector / iOS `CLHeading` |
-| 2 | **Raw sensors** — magnetometer + accelerometer, tilt-compensated in Dart (`HeadingMath.tiltCompensatedHeading`) | magnetic | applied | Same math as Android's `getRotationMatrix`; the "facing" blend uses the top edge when flat and the back of the phone when upright |
-| 3 | **Turn sensor + calibration** — gyroscope (or rotation vector) integrated about the vertical, plus one tap on **Set: pointing at the sun** or **Set: pointing north** | true (sun) / magnetic (north) | only for north | Uncalibrated it shows the Set buttons and no heading; the smoother resets at calibration |
-| 4 | **GPS (walking)** — geolocator course, only when speed > 1 m/s with sane heading accuracy | true | never | "Walk a few steps to get direction · Hamba izinyathelo ezimbalwa"; also listened to opportunistically while rung 3 waits |
-| 5 | **Sun guidance** — no heading at all | — | — | Sun azimuth now, "face the sun then turn N°", stick-shadow method, hand-compass bearing (true & magnetic). Bearing / distance / declination keep working |
+| Mode / source | Reference | Behavior |
+| --- | --- | --- |
+| Phone: native fusion | Magnetic | Android rotation/geomagnetic vector; iOS magnetic Core Motion → ENU. Real OS error and calibration diagnostics, never made-up bounds. |
+| Phone: raw magnetometer + gravity | Magnetic | Tilt compensation with fresh gravity; missing gravity is explicitly assumed/uncertain. Field/motion checks can reject disturbed readings. |
+| Phone: quaternion gyro + manual anchor | True (sun), magnetic (hand compass) | Temporary, uncertain tracking. Requires flat/still calibration; expiry, gaps and restarts invalidate the anchor. |
+| Travel: GPS course | True | Explicit selection only, fresh moving fixes and sustained displacement. It is travel direction, not phone facing; never confirms msamo/sun/phone alignment. |
+| No usable phone sensor | None | Sun/shadow and hand-compass guidance; no fabricated heading or target needle. |
 
-Rules: WMM declination is added only to magnetic samples (rungs 1, 2, north-
-calibrated 3); GPS and sun-calibrated headings are already true. The wrap-aware
-smoother (`AngleSmoother`) and the UI throttle (`HeadingThrottle`, 33 ms normal /
-66 ms low profile) sit between the ladder and the dial. Level bubble
-("Flat · Ithe bha" when |pitch| < 8° and |roll| < 8°) runs on the accelerometer
-independently and is shown only while a sensor is active. The screen stays on
-(`wakelock_plus`) while the compass runs; sensors and the wake lock are released
-when the app goes to the background and restarted on resume.
+The phone ladder bounds acquisition/staleness and hung shutdown, and probes
+preferred sources using new, continuously healthy timestamps. The uncalibrated
+gyro source does not trap access to the explicit travel selector. Smoothing is
+elapsed-time/circular; source/reference/quality changes reset settling.
+Normal/low profiles cap repaint rate and sensor rate independently.
+
+Manual/town locations are approximate. Old fixes and near-target geometry
+cannot confirm alignment. WMM model validity refreshes even when a sensor is
+quiet. The level bubble disappears on stale/invalid acceleration. Sensors,
+continuous GPS, pending one-shot GPS and the wake lock are released on
+backgrounding; resume creates a fresh calibration session.
 
 ### Degradation matrix
 
 | Situation | What happens |
 | --- | --- |
-| No compass (magnetometer) | Rungs 1–2 are skipped; rung 3 asks for a one-tap Set (sun or north); walking gives GPS course; otherwise sun guidance. Bearings still shown |
-| No gyroscope | Rung 3 is skipped (rotation vector is tried first); GPS course while walking, else sun guidance |
-| No accelerometer | Rung 2 and the level bubble are unavailable; rung 1 (fused) still works if present; the gyro rung uses a vertical assumption |
-| No GPS / no fix | Compass still turns (magnetic heading); bearing, distance and declination wait for a manual location, a town from the picker or a centre |
-| No internet | Everything except map tiles works: compass, sun, guide, centres list, town picker. Map shows "Map unavailable offline"; cached tiles still draw (normal profile) |
-| Low RAM (≤ 2 GB, `isLowRamDevice`, Android ≤ 8.0, old iPhones) | `low` profile: 15 fps arrow, flat dial (no gradients / shadows / halo), no animations, 16 MB image cache, tighter clustering, tile cache off. Users can force it with **Battery saver · Simple mode** on the Guide tab |
-| Location denied / denied forever / services off | Distinct messages with a button to the right system screen; the dial still turns on magnetic heading |
-| Motion denied (iOS) or sensor stream errors | The rung fails over like an absent sensor; nothing crashes. `NSMotionUsageDescription` is set |
+| No magnetometer | No absolute magnetic north is invented. Use a calibrated gyro if available, explicitly selected travel direction, or sun/hand-compass guidance. |
+| No gyro | No gyro-relative source. Native geomagnetic fusion or raw sensors can still provide magnetic direction if present. |
+| No accelerometer | No real level bubble. A flat assumption, if needed, remains uncertain; do not claim tilt-independent precision. |
+| Interference / unknown accuracy | Warn, withhold precision, and reject/fall back when unusable. Smooth movement is not proof of accuracy. |
+| No GPS / no fix | Magnetic phone direction may still work. Target bearing/declination require a known origin; manual/town origins are approximate. |
+| Location denied / services off | Permission/settings guidance; phone mode is separate from GPS travel mode. |
+| Motion denied / stream errors | Bounded failover without crashing or fabricating a heading. |
+| Low-end device / Simple mode | Reduced sampling/rendering, simpler dial and tighter map/image budgets. The accuracy gates are not relaxed. |
+| Offline | Compass and sun need no network; membership offline rules still apply. Uncached centres/maps and first login need connectivity. |
+
+No hardware-independent angular guarantee is made. Complete the physical-device
+protocol before release, including interference, independent true-bearing
+measurements and battery/lifecycle profiling.
 
 ### Low-end guidance
 
@@ -335,7 +359,7 @@ when the app goes to the background and restarted on resume.
 * `ImageCache` limits follow the profile; the crest ships as 1x / 2x / 3x and is
   decoded at display size.
 * Fonts are bundled (`GoogleFonts.config.allowRuntimeFetching = false`).
-* Text scale is clamped to 0.9–1.3; layouts are checked at 320 dp.
+* Text scale is clamped to 0.9–1.3; include 320 dp layouts in device validation.
 * Map tiles use `userAgentPackageName = com.tshk.tshk_compass` and an optional
   ~50 MB size-capped cache (off in the low profile).
 

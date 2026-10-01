@@ -19,8 +19,7 @@ class Vector3 {
   double get length => math.sqrt(x * x + y * y + z * z);
 
   /// Whether every component is a finite number and the vector is not zero.
-  bool get isUsable =>
-      x.isFinite && y.isFinite && z.isFinite && length > 1e-6;
+  bool get isUsable => x.isFinite && y.isFinite && z.isFinite && length > 1e-6;
 
   /// Unit vector in the same direction (the zero vector stays zero).
   Vector3 normalized() {
@@ -35,11 +34,8 @@ class Vector3 {
   double dot(Vector3 o) => x * o.x + y * o.y + z * o.z;
 
   /// Cross product `this × o`.
-  Vector3 cross(Vector3 o) => Vector3(
-        y * o.z - z * o.y,
-        z * o.x - x * o.z,
-        x * o.y - y * o.x,
-      );
+  Vector3 cross(Vector3 o) =>
+      Vector3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x);
 
   Vector3 operator -(Vector3 o) => Vector3(x - o.x, y - o.y, z - o.z);
   Vector3 operator +(Vector3 o) => Vector3(x + o.x, y + o.y, z + o.z);
@@ -128,9 +124,16 @@ abstract final class HeadingMath {
     // 0 when flat, 1 when upright.
     final double w = tU * tU;
     // Add the back of the phone as it rises.
-    return Angles.normalize360(
-      Angles.toDegrees(math.atan2(tE - w * zE, tN - w * zN)),
-    );
+    final double east = tE - w * zE;
+    final double north = tN - w * zN;
+    // A nearly vertical / cancelling facing vector has no useful azimuth.
+    // NaN is intentionally rejected by the sources, never converted to north.
+    if (!east.isFinite ||
+        !north.isFinite ||
+        east * east + north * north < 0.04) {
+      return double.nan;
+    }
+    return Angles.normalize360(Angles.toDegrees(math.atan2(east, north)));
   }
 
   /// Heading from W3C device-orientation Euler angles (degrees), as used by
@@ -163,7 +166,18 @@ abstract final class HeadingMath {
 
   /// Heading from a device → Earth unit quaternion `(x, y, z, w)` with Earth
   /// x = east, y = north, z = up (the frame of a rotation-vector sensor).
-  static double headingFromQuat(double x, double y, double z, double w) {
+  static double headingFromQuat(
+    double x,
+    double y,
+    double z,
+    double w, {
+    double screenAngleDeg = 0,
+  }) {
+    final Quaternion q = Quaternion(x, y, z, w).normalized();
+    x = q.x;
+    y = q.y;
+    z = q.z;
+    w = q.w;
     return facing(
       1 - 2 * (y * y + z * z),
       2 * (x * y + w * z),
@@ -174,7 +188,7 @@ abstract final class HeadingMath {
       2 * (x * z + w * y),
       2 * (y * z - w * x),
       1 - 2 * (x * x + y * y),
-      0,
+      Angles.toRadians(screenAngleDeg),
     );
   }
 
@@ -205,12 +219,19 @@ abstract final class HeadingMath {
     final Vector3 e = h.normalized();
     final Vector3 n = a.cross(e);
     // Device x axis in Earth coords: (Hx, Nx, Ax), and so on.
-    return facing(
-      e.x, n.x, a.x, //
-      e.y, n.y, a.y, //
-      e.z, n.z, a.z, //
+    final double result = facing(
+      e.x,
+      n.x,
+      a.x, //
+      e.y,
+      n.y,
+      a.y, //
+      e.z,
+      n.z,
+      a.z, //
       Angles.toRadians(screenAngleDeg),
     );
+    return result.isFinite ? result : null;
   }
 
   /// Yaw rate about the Earth-vertical axis from a gyroscope sample (rad/s)
@@ -230,8 +251,7 @@ abstract final class HeadingMath {
   static double calibrationOffset({
     required double targetHeadingDeg,
     required double relativeHeadingDeg,
-  }) =>
-      Angles.normalize360(targetHeadingDeg - relativeHeadingDeg);
+  }) => Angles.normalize360(targetHeadingDeg - relativeHeadingDeg);
 
   /// Applies a calibration offset to a relative heading.
   static double applyOffset(double relativeHeadingDeg, double offsetDeg) =>
@@ -242,4 +262,117 @@ abstract final class HeadingMath {
   /// and must not go through here.
   static double magneticToTrue(double magneticDeg, double declinationDeg) =>
       Angles.normalize360(magneticDeg + declinationDeg);
+}
+
+/// Unit quaternion mapping device axes to an Earth / arbitrary level frame.
+/// Relative turn tracking integrates all three axes, not only scalar yaw.
+class Quaternion {
+  const Quaternion(this.x, this.y, this.z, this.w);
+
+  static const Quaternion identity = Quaternion(0, 0, 0, 1);
+  final double x;
+  final double y;
+  final double z;
+  final double w;
+
+  Quaternion normalized() {
+    final double n = math.sqrt(x * x + y * y + z * z + w * w);
+    if (!n.isFinite || n < 1e-9) {
+      return const Quaternion(double.nan, double.nan, double.nan, double.nan);
+    }
+    return Quaternion(x / n, y / n, z / n, w / n);
+  }
+
+  Quaternion get conjugate => Quaternion(-x, -y, -z, w);
+
+  Quaternion operator *(Quaternion q) => Quaternion(
+    w * q.x + x * q.w + y * q.z - z * q.y,
+    w * q.y - x * q.z + y * q.w + z * q.x,
+    w * q.z + x * q.y - y * q.x + z * q.w,
+    w * q.w - x * q.x - y * q.y - z * q.z,
+  );
+
+  Vector3 rotate(Vector3 v) {
+    final Quaternion r = this * Quaternion(v.x, v.y, v.z, 0) * conjugate;
+    return Vector3(r.x, r.y, r.z);
+  }
+
+  static Quaternion rotation(Vector3 radians) {
+    final double angle = radians.length;
+    if (angle < 1e-9) {
+      return identity;
+    }
+    final double scale = math.sin(angle / 2) / angle;
+    return Quaternion(
+      radians.x * scale,
+      radians.y * scale,
+      radians.z * scale,
+      math.cos(angle / 2),
+    );
+  }
+
+  /// Creates a level reference from gravity. Heading is deliberately arbitrary
+  /// until the user anchors it; the matrix rows are east, north and up.
+  static Quaternion fromUp(Vector3 gravity) {
+    final Vector3 up = gravity.normalized();
+    Vector3 north = const Vector3(0, 1, 0) - up * up.y;
+    if (north.length < 0.2) {
+      north = const Vector3(0, 0, -1) + up * up.z;
+    }
+    north = north.normalized();
+    final Vector3 east = north.cross(up).normalized();
+    return fromMatrix(<double>[
+      east.x,
+      east.y,
+      east.z,
+      north.x,
+      north.y,
+      north.z,
+      up.x,
+      up.y,
+      up.z,
+    ]);
+  }
+
+  /// Row-major device → Earth rotation matrix.
+  static Quaternion fromMatrix(List<double> m) {
+    if (m.length != 9 || m.any((double v) => !v.isFinite)) {
+      return const Quaternion(double.nan, double.nan, double.nan, double.nan);
+    }
+    final double trace = m[0] + m[4] + m[8];
+    if (trace > 0) {
+      final double s = math.sqrt(trace + 1) * 2;
+      return Quaternion(
+        (m[7] - m[5]) / s,
+        (m[2] - m[6]) / s,
+        (m[3] - m[1]) / s,
+        0.25 * s,
+      ).normalized();
+    }
+    if (m[0] > m[4] && m[0] > m[8]) {
+      final double s = math.sqrt(1 + m[0] - m[4] - m[8]) * 2;
+      return Quaternion(
+        0.25 * s,
+        (m[1] + m[3]) / s,
+        (m[2] + m[6]) / s,
+        (m[7] - m[5]) / s,
+      ).normalized();
+    }
+    if (m[4] > m[8]) {
+      final double s = math.sqrt(1 + m[4] - m[0] - m[8]) * 2;
+      return Quaternion(
+        (m[1] + m[3]) / s,
+        0.25 * s,
+        (m[5] + m[7]) / s,
+        (m[2] - m[6]) / s,
+      ).normalized();
+    }
+    final double s = math.sqrt(1 + m[8] - m[0] - m[4]) * 2;
+    return Quaternion(
+      (m[2] + m[6]) / s,
+      (m[5] + m[7]) / s,
+      0.25 * s,
+      (m[3] - m[1]) / s,
+    ).normalized();
+  }
 }

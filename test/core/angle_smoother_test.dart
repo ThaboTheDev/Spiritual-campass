@@ -1,106 +1,100 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tshk_compass/core/geo/angle_smoother.dart';
 import 'package:tshk_compass/core/geo/coordinates.dart';
 
 void main() {
-  group('AngleSmoother', () {
-    test('the first sample is taken as-is', () {
-      final AngleSmoother smoother = AngleSmoother(alpha: 0.2);
-      expect(smoother.push(123), closeTo(123, 1e-9));
-      expect(smoother.hasValue, isTrue);
+  final DateTime t0 = DateTime.utc(2026, 1, 1);
+  group('time-based angle smoothing', () {
+    test('first value is immediate', () {
+      final AngleSmoother s = AngleSmoother();
+      expect(s.push(123, timestamp: t0), 123);
     });
-
-    test('moves towards the sample by alpha', () {
-      final AngleSmoother smoother = AngleSmoother(alpha: 0.25);
-      smoother.push(0);
-      expect(smoother.push(100), closeTo(25, 1e-9));
-      expect(smoother.push(100), closeTo(43.75, 1e-9));
+    test('uses elapsed time and takes the shortest arc across north', () {
+      final AngleSmoother s = AngleSmoother();
+      s.push(359, timestamp: t0);
+      final double alpha = 1 - math.exp(-40 / 140);
+      expect(
+        s.push(1, timestamp: t0.add(const Duration(milliseconds: 40))),
+        closeTo(Angles.normalize360(359 + 2 * alpha), 1e-9),
+      );
     });
-
-    test('crossing north takes the short way round', () {
-      final AngleSmoother smoother = AngleSmoother(alpha: 0.5);
-      smoother.push(359);
-      // 359 -> 1 is +2 degrees, not -358.
-      expect(smoother.push(1), closeTo(0, 1e-9));
-      smoother.push(1);
-      expect(smoother.value, closeTo(0.5, 1e-9));
-    });
-
-    test('never leaves the 0 - 360 range', () {
-      final AngleSmoother smoother = AngleSmoother(alpha: 0.3);
-      double value = 350;
-      for (int i = 0; i < 200; i++) {
-        value = smoother.push(value + 7);
-        expect(value, greaterThanOrEqualTo(0));
-        expect(value, lessThan(360));
+    test('15, 25 and 50 Hz have the same settling behavior', () {
+      double run(int periodMs) {
+        final AngleSmoother s = AngleSmoother();
+        s.push(0, timestamp: t0);
+        for (int ms = periodMs; ms <= 1000; ms += periodMs) {
+          s.push(10, timestamp: t0.add(Duration(milliseconds: ms)));
+        }
+        return s.value!;
       }
-    });
 
-    test('snaps to a sample that is further away than the threshold', () {
-      final AngleSmoother smoother =
-          AngleSmoother(alpha: 0.1, resetThresholdDeg: 90);
-      smoother.push(0);
-      expect(smoother.push(200), closeTo(200, 1e-9));
+      expect(run(40), closeTo(run(20), 1e-9));
+      expect(run(66), closeTo(10 * (1 - math.exp(-990 / 140)), 1e-9));
     });
-
-    test('reset forgets the value', () {
-      final AngleSmoother smoother = AngleSmoother();
-      smoother.push(42);
-      smoother.reset();
-      expect(smoother.hasValue, isFalse);
-      expect(smoother.push(7), closeTo(7, 1e-9));
+    test(
+      'big turns follow faster, but a single gap does not spin catch-up',
+      () {
+        final AngleSmoother fast = AngleSmoother();
+        final AngleSmoother slow = AngleSmoother(
+          turnTimeConstant: const Duration(milliseconds: 140),
+        );
+        fast.push(0, timestamp: t0);
+        slow.push(0, timestamp: t0);
+        final DateTime next = t0.add(const Duration(milliseconds: 40));
+        expect(
+          fast.push(90, timestamp: next),
+          greaterThan(slow.push(90, timestamp: next)),
+        );
+        expect(
+          fast.push(270, timestamp: t0.add(const Duration(seconds: 2))),
+          270,
+        );
+      },
+    );
+    test('ignores invalid, duplicate and out-of-order samples', () {
+      final AngleSmoother s = AngleSmoother();
+      s.push(42, timestamp: t0);
+      expect(s.push(double.nan, timestamp: t0), 42);
+      expect(s.push(180, timestamp: t0), 42);
+      expect(
+        s.push(270, timestamp: t0.subtract(const Duration(seconds: 1))),
+        42,
+      );
+      s.reset();
+      expect(s.hasValue, isFalse);
+      expect(s.push(7, timestamp: t0), 7);
     });
   });
-
-  group('HeadingThrottle', () {
-    test('emits the first value immediately', () {
-      final HeadingThrottle throttle = HeadingThrottle();
-      expect(throttle.shouldEmit(10, now: DateTime.utc(2026, 1, 1)), isTrue);
-    });
-
-    test('drops updates that arrive too soon and are tiny', () {
-      final HeadingThrottle throttle = HeadingThrottle(
-        minInterval: const Duration(milliseconds: 100),
-        minDeltaDeg: 1,
+  group('strict rendering budget', () {
+    test('even a fast turn cannot bypass the low-end FPS cap', () {
+      final HeadingThrottle t = HeadingThrottle(
+        minInterval: const Duration(milliseconds: 66),
       );
-      final DateTime t0 = DateTime.utc(2026, 1, 1);
-      expect(throttle.shouldEmit(10, now: t0), isTrue);
+      expect(t.shouldEmit(0, now: t0), isTrue);
       expect(
-        throttle.shouldEmit(10.1, now: t0.add(const Duration(milliseconds: 10))),
+        t.shouldEmit(90, now: t0.add(const Duration(milliseconds: 5))),
         isFalse,
       );
-      // Enough time has passed, so the update goes through.
       expect(
-        throttle.shouldEmit(10.1, now: t0.add(const Duration(milliseconds: 120))),
+        t.shouldEmit(90, now: t0.add(const Duration(milliseconds: 66))),
         isTrue,
       );
     });
-
-    test('lets a large movement through straight away', () {
-      final HeadingThrottle throttle = HeadingThrottle(
-        minInterval: const Duration(milliseconds: 500),
-        minDeltaDeg: 0.2,
-      );
-      final DateTime t0 = DateTime.utc(2026, 1, 1);
-      throttle.shouldEmit(10, now: t0);
+    test('stationary updates pass at the budget and invalid values do not', () {
+      final HeadingThrottle t = HeadingThrottle();
+      expect(t.shouldEmit(10, now: t0), isTrue);
       expect(
-        throttle.shouldEmit(40, now: t0.add(const Duration(milliseconds: 5))),
+        t.shouldEmit(10, now: t0.add(const Duration(milliseconds: 33))),
         isTrue,
       );
-    });
-
-    test('reset clears the history', () {
-      final HeadingThrottle throttle = HeadingThrottle();
-      final DateTime t0 = DateTime.utc(2026, 1, 1);
-      throttle.shouldEmit(10, now: t0);
-      throttle.reset();
-      expect(throttle.shouldEmit(10, now: t0), isTrue);
-    });
-  });
-
-  group('Angles helpers used by the throttle', () {
-    test('difference across north is small', () {
-      expect(Angles.difference(359, 1), closeTo(2, 1e-9));
+      expect(
+        t.shouldEmit(double.nan, now: t0.add(const Duration(seconds: 1))),
+        isFalse,
+      );
+      t.reset();
+      expect(t.shouldEmit(10, now: t0), isTrue);
     });
   });
 }

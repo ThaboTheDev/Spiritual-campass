@@ -15,8 +15,8 @@ class SunPosition {
 
   /// Compass bearing of the sun in degrees, 0 = north, 90 = east.
   ///
-  /// Already corrected for atmospheric refraction, so it is the direction you
-  /// actually see the sun, not the geometric direction.
+  /// Geometric horizontal azimuth. Atmospheric refraction is applied to
+  /// elevation only; it must not distort the horizontal heading anchor.
   final double azimuthDeg;
 
   /// Height of the sun above the horizon in degrees. Negative means the sun has
@@ -43,7 +43,11 @@ class SunPosition {
 
   /// Whether the sun is usefully high for a shadow: above the horizon by more
   /// than a couple of degrees, so a stick casts a readable shadow.
-  bool get castsShadow => elevationDeg > 2.0;
+  bool get castsShadow => elevationDeg > 2.0 && elevationDeg < 80.0;
+
+  /// Avoid uncertain horizon and overhead azimuths for a manual heading anchor.
+  bool get canAnchorHeading =>
+      azimuthDeg.isFinite && elevationDeg >= 5 && elevationDeg < 80;
 
   /// The bearing a shadow points: directly away from the sun.
   ///
@@ -82,8 +86,7 @@ abstract final class SunCalculator {
     final double t = (julianDay - 2451545.0) / 36525.0;
 
     // 2. Geometric mean longitude and mean anomaly of the sun (degrees).
-    final double l0 =
-        _mod360(280.46646 + t * (36000.76983 + t * 0.0003032));
+    final double l0 = _mod360(280.46646 + t * (36000.76983 + t * 0.0003032));
     final double m = 357.52911 + t * (35999.05029 - 0.0001537 * t);
 
     // 3. Eccentricity of the earth's orbit.
@@ -91,7 +94,8 @@ abstract final class SunCalculator {
 
     // 4. Equation of the centre.
     final double mr = Angles.toRadians(m);
-    final double centre = math.sin(mr) * (1.914602 - t * (0.004817 + t * 0.000014)) +
+    final double centre =
+        math.sin(mr) * (1.914602 - t * (0.004817 + t * 0.000014)) +
         math.sin(2 * mr) * (0.019993 - 0.000101 * t) +
         math.sin(3 * mr) * 0.000289;
 
@@ -108,15 +112,20 @@ abstract final class SunCalculator {
         meanObliquity + 0.00256 * math.cos(Angles.toRadians(omega));
 
     // 7. Solar declination.
-    final double declination = Angles.toDegrees(math.asin(
-      math.sin(Angles.toRadians(obliquity)) *
-          math.sin(Angles.toRadians(apparentLongitude)),
-    ));
+    final double declination = Angles.toDegrees(
+      math.asin(
+        math.sin(Angles.toRadians(obliquity)) *
+            math.sin(Angles.toRadians(apparentLongitude)),
+      ),
+    );
 
     // 8. Equation of time, in minutes (1 degree = 4 minutes of time).
-    final double y = math.pow(math.tan(Angles.toRadians(obliquity) / 2), 2).toDouble();
+    final double y = math
+        .pow(math.tan(Angles.toRadians(obliquity) / 2), 2)
+        .toDouble();
     final double l0r = Angles.toRadians(l0);
-    final double equationOfTime = 4 *
+    final double equationOfTime =
+        4 *
         Angles.toDegrees(
           y * math.sin(2 * l0r) -
               2 * e * math.sin(mr) +
@@ -129,8 +138,10 @@ abstract final class SunCalculator {
     //    longitude (4 minutes per degree) shifts local solar time.
     final double minutesUtc =
         utc.hour * 60.0 + utc.minute + utc.second + utc.millisecond / 1000.0;
-    final double trueSolarTime =
-        _mod(minutesUtc + equationOfTime + 4 * longitudeDeg, 1440.0);
+    final double trueSolarTime = _mod(
+      minutesUtc + equationOfTime + 4 * longitudeDeg,
+      1440.0,
+    );
     double hourAngle = trueSolarTime / 4.0 - 180.0;
     if (hourAngle < -180.0) {
       hourAngle += 360.0;
@@ -148,13 +159,13 @@ abstract final class SunCalculator {
       -1.0,
       1.0,
     );
-    double elevation = 90.0 - Angles.toDegrees(math.acos(cosZenith));
+    final double zenith = Angles.toDegrees(math.acos(cosZenith));
+    double elevation = 90.0 - zenith;
     elevation += _refractionDeg(elevation);
-    final double zenith = 90.0 - elevation;
+    // Refraction changes elevation, not azimuth. Use geometric zenith below.
 
     // 11. Azimuth, measured clockwise from north.
-    final double denom =
-        math.cos(latR) * math.sin(Angles.toRadians(zenith));
+    final double denom = math.cos(latR) * math.sin(Angles.toRadians(zenith));
     double azimuth;
     if (denom.abs() > 1e-9) {
       final double value = _clamp(
@@ -164,9 +175,7 @@ abstract final class SunCalculator {
         1.0,
       );
       final double angle = Angles.toDegrees(math.acos(value));
-      azimuth = hourAngle > 0
-          ? _mod360(angle + 180.0)
-          : _mod360(540.0 - angle);
+      azimuth = hourAngle > 0 ? _mod360(angle + 180.0) : _mod360(540.0 - angle);
     } else {
       // Directly overhead (or the sun is exactly at the nadir): the bearing is
       // undefined, so fall back to the hemisphere the sun is on.
@@ -187,9 +196,11 @@ abstract final class SunCalculator {
   static double _julianDay(DateTime utc) {
     int year = utc.year;
     int month = utc.month;
-    final double day = utc.day +
-        (utc.hour + utc.minute / 60.0 +
-            (utc.second + utc.millisecond / 1000.0) / 60.0) /
+    final double day =
+        utc.day +
+        (utc.hour +
+                utc.minute / 60.0 +
+                (utc.second + utc.millisecond / 1000.0) / 60.0) /
             24.0;
     if (month <= 2) {
       year -= 1;
@@ -212,24 +223,25 @@ abstract final class SunCalculator {
     final double te = math.tan(Angles.toRadians(elevationDeg));
     double refractionArcSeconds;
     if (elevationDeg > 5.0) {
-      refractionArcSeconds = 58.1 / te -
+      refractionArcSeconds =
+          58.1 / te -
           0.07 / math.pow(te, 3).toDouble() +
           0.000086 / math.pow(te, 5).toDouble();
     } else if (elevationDeg > -0.575) {
-      refractionArcSeconds = 1735.0 +
+      refractionArcSeconds =
+          1735.0 +
           elevationDeg *
               (-518.2 +
                   elevationDeg *
-                      (103.4 +
-                          elevationDeg *
-                              (-12.79 + elevationDeg * 0.711)));
+                      (103.4 + elevationDeg * (-12.79 + elevationDeg * 0.711)));
     } else {
       refractionArcSeconds = -20.774 / te;
     }
     return refractionArcSeconds / 3600.0;
   }
 
-  static double _mod360(double value) => value % 360.0 < 0 ? (value % 360.0) + 360.0 : value % 360.0;
+  static double _mod360(double value) =>
+      value % 360.0 < 0 ? (value % 360.0) + 360.0 : value % 360.0;
 
   static double _mod(double value, double modulus) {
     final double result = value % modulus;

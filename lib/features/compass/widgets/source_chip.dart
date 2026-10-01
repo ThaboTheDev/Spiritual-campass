@@ -33,10 +33,10 @@ class SourceChip extends StatelessWidget {
               child: LocalizedText(
                 text,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colour,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
+                  color: colour,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -83,10 +83,17 @@ class SourceChip extends StatelessWidget {
     final IconData icon = switch (source) {
       HeadingSourceKind.fusedCompass => Icons.explore_outlined,
       HeadingSourceKind.rawSensors => Icons.sensors_outlined,
-      HeadingSourceKind.relativeCalibrated => Icons.screen_rotation_alt_outlined,
+      HeadingSourceKind.relativeCalibrated =>
+        Icons.screen_rotation_alt_outlined,
       HeadingSourceKind.gpsCourse => Icons.directions_walk,
       HeadingSourceKind.sunOnly => Icons.wb_sunny_outlined,
     };
-    return (source.label, AppColors.success, icon);
+    return (
+      source.label,
+      compass.confidence == HeadingConfidence.reliable
+          ? AppColors.success
+          : AppColors.warning,
+      icon,
+    );
   }
 }
