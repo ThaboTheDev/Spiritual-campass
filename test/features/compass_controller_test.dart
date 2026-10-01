@@ -320,4 +320,20 @@ void main() {
       expect(location.fixCancellations, greaterThan(0));
     },
   );
+  test(
+    'a wake acquisition completing after timeout is compensated after stop',
+    () async {
+      wake.acquireGate = Completer<void>();
+      await controller.start();
+      await flushStreams();
+      controller.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await flushStreams();
+      expect(wake.releases, 1);
+      wake.acquireGate!.complete();
+      await flushStreams();
+      expect(wake.releases, 2);
+      expect(wake.held, isFalse);
+    },
+  );
 }

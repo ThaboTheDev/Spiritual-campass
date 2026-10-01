@@ -869,8 +869,29 @@ class CompassController extends Notifier<CompassState> {
     }
     _wakeLocked = true;
     _wakeOperation = _wakeOperation
-        .then((_) => _wakeLock.acquire().timeout(const Duration(seconds: 1)))
+        .then((_) => _acquireWakeWithTimeout())
         .catchError((Object _) {});
+  }
+
+  Future<void> _acquireWakeWithTimeout() {
+    final Future<void> pending = _wakeLock.acquire();
+    return pending.timeout(
+      const Duration(seconds: 1),
+      onTimeout: () {
+        // A timed-out Future does not cancel the native operation. If it acquires
+        // after the queued release, compensate unless a new session wants it on.
+        unawaited(
+          pending
+              .then((_) async {
+                if (!_wakeLocked) {
+                  await _wakeLock.release().timeout(const Duration(seconds: 1));
+                }
+              })
+              .catchError((Object _) {}),
+        );
+        return Future<void>.value();
+      },
+    );
   }
 
   void _releaseWakeLock() {

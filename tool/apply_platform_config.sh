@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Copies the platform configuration from platform_config/ over a Flutter
-# scaffold, so the manifest, Gradle build, Info.plist and Podfile are the ones
+# scaffold, so the manifest, Gradle build and Info.plist are the ones
 # in this repository.
 #
 # Usage (from the repo root, after `flutter create` has generated android/ ios/):
@@ -47,6 +47,11 @@ if [[ -d "$TARGET/ios" ]]; then
   fi
   cp -R "$REPO_ROOT/platform_config/ios/." "$TARGET/ios/"
   python3 "$REPO_ROOT/tool/register_ios_compass.py" "$TARGET/ios/Runner.xcodeproj/project.pbxproj"
+  # Every iOS plugin here ships a Swift package, so CocoaPods integration is
+  # removed (Flutter 3.44 default is Swift Package Manager). A leftover
+  # Podfile makes `pod install` produce no Pods at all, and Xcode then fails
+  # with "The sandbox is not in sync with the Podfile.lock".
+  rm -f "$TARGET/ios/Podfile" "$TARGET/ios/Podfile.lock"
   echo "  ios/ updated"
 fi
 

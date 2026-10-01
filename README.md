@@ -129,8 +129,9 @@ dart run flutter_native_splash:create
   phrased so that adding the isiZulu line is easy.
 * `LSApplicationQueriesSchemes` includes `maps`, `http`, `https` and `tel`.
 * Portrait only (`UISupportedInterfaceOrientations`).
-* `Podfile` sets iOS 13.0 and `BYPASS_PERMISSION_LOCATION_ALWAYS=1` for
-  geolocator, so no "Always" location key is required.
+* iOS plugins are integrated with **Swift Package Manager** (Flutter 3.44
+  default); the project declares iOS 13.0 and only
+  `NSLocationWhenInUseUsageDescription`, which is what geolocator asks for.
 
 ---
 

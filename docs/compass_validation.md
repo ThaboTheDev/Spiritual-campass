@@ -12,6 +12,8 @@ The platform overlays now match the active Android/iOS files. The apply helper r
 
 | Check | Result | What it establishes |
 | --- | --- | --- |
+| GitHub CI: Flutter analysis | **Passed** (run 36879302583) | `flutter analyze --no-fatal-infos` clean on Flutter 3.44.0 |
+| GitHub CI: Flutter tests | **291 passed / 1 failed** | The only failure was an outdated membership `maybePop` assertion, now corrected |
 | Platform helper tests | **5/5 passed** | Registration, idempotence, synchronized groups, unsupported/partial-project handling and overlay application on a temporary scaffold |
 | Configuration validator | **Passed** | Active/overlay equality, Swift registration IDs, portrait/scene configuration, translation keys/placeholders/mirrors, old dependency removal and bundled fonts |
 | Changed Dart files | **47 parsed/formatted; formatter idempotent** | Dart syntax/format only, **not type checking** |

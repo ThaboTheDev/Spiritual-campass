@@ -74,6 +74,13 @@ jobs:
       - run: flutter pub get
       - run: flutter build ios --debug --no-codesign
       - run: flutter build ios --simulator --debug
+      - name: Publish generated SwiftPM integration
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-swiftpm-integration
+          path: |
+            ios/Runner.xcodeproj/project.pbxproj
+            ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
       - name: Native Core Motion frame tests
         shell: bash
         run: |

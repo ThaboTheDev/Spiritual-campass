@@ -56,7 +56,7 @@ flutter analyze --no-fatal-infos
 flutter test
 flutter build apk --debug --target-platform android-arm64
 (cd android && bash gradlew :app:testDebugUnitTest --no-daemon)
-# macOS + Xcode + CocoaPods:
+# macOS + Xcode (Swift Package Manager; no CocoaPods):
 flutter build ios --debug --no-codesign
 flutter build ios --simulator --debug
 # Run the RunnerTests test target in Xcode on an available iOS simulator.
