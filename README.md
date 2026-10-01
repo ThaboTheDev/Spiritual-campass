@@ -124,6 +124,7 @@ dart run flutter_native_splash:create
 
 ### iOS
 
+* Xcode 26.1+ is required by the current native dependencies; CI selects Xcode 26.3.
 * `NSLocationWhenInUseUsageDescription` and `NSMotionUsageDescription`, both
   phrased so that adding the isiZulu line is easy.
 * `LSApplicationQueriesSchemes` includes `maps`, `http`, `https` and `tel`.

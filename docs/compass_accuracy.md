@@ -46,7 +46,7 @@ The fresh level bubble is not proof of heading quality. Missing or stale acceler
 
 ## Automated validation
 
-Use Flutter **3.44.0 / Dart 3.12 or newer**; CI is pinned to Flutter 3.44.0. Python 3 is required only for platform configuration helpers.
+Use Flutter **3.44.0 / Dart 3.12 or newer** and **Xcode 26.1+** for the current iOS dependencies; CI is pinned to Flutter 3.44.0 and selects Xcode 26.3. Python 3 is required only for platform configuration helpers.
 
 ```bash
 python3 tool/check_compass_config.py

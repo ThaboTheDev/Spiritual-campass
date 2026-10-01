@@ -9,7 +9,6 @@ import 'package:tshk_compass/core/geo/geo_math.dart';
 import 'package:tshk_compass/core/geo/heading_math.dart';
 import 'package:tshk_compass/core/geo/heading_quality.dart';
 import 'package:tshk_compass/features/compass/compass_controller.dart';
-import 'package:tshk_compass/features/compass/engine/heading_source.dart';
 import 'package:tshk_compass/features/location/location_controller.dart';
 import 'package:tshk_compass/services/compass_service.dart';
 import 'package:tshk_compass/services/motion_sensors.dart';

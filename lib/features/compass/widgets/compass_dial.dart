@@ -227,7 +227,6 @@ class _DialPainter extends CustomPainter {
     required this.ringColor,
     required this.aligned,
     this.simple = false,
-    this.travelDirection = false,
   });
 
   final double headingRad;
@@ -394,7 +393,6 @@ class _MarkerPainter extends CustomPainter {
     required this.color,
     required this.aligned,
     this.simple = false,
-    this.travelDirection = false,
   });
 
   final Color color;

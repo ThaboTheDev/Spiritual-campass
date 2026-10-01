@@ -29,6 +29,5 @@ linter:
     - prefer_single_quotes
     - sort_child_properties_last
     - test_types_in_equals
-    - throw_in_fallback
     - unnecessary_parenthesis
     - use_super_parameters
