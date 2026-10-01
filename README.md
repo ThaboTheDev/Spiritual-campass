@@ -132,6 +132,9 @@ dart run flutter_native_splash:create
 * iOS plugins are integrated with **Swift Package Manager** (Flutter 3.44
   default); the project declares iOS 13.0 and only
   `NSLocationWhenInUseUsageDescription`, which is what geolocator asks for.
+  The first `flutter run` / `flutter build ios` writes that integration into
+  `ios/Runner.xcodeproj/project.pbxproj` and the shared scheme — commit those
+  changes when they appear.
 
 ---
 
