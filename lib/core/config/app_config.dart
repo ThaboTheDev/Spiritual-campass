@@ -1,33 +1,38 @@
 /// Build-time flags and service endpoints.
 ///
 /// Everything here is a compile-time constant so that dead code (for example
-/// the whole membership feature when [kMembershipEnabled] is `false`) is
-/// tree-shaken out of release builds. Override with `--dart-define`, e.g.
+/// the purchase controls when [kStoreBuild] is `true`) is tree-shaken out of
+/// release builds. Override with `--dart-define`, e.g.
 ///
 /// ```bash
-/// flutter build appbundle --dart-define=MEMBERSHIP_ENABLED=true \
-///     --dart-define=STORE_BUILD=true
+/// flutter build appbundle \
+///     --dart-define=MEMBERSHIP_API_BASE_URL=https://members.example.org \
+///     --dart-define=SUPABASE_URL=https://abcd.supabase.co \
+///     --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi... \
+///     --dart-define=SITE_URL=https://members.example.org
 /// ```
+///
+/// Membership is no longer optional: the whole app (the compass included) is
+/// behind e-mail + password login and behind access (trial or paid), so these
+/// four values must be supplied for any build that is meant to run.
 library;
 
-/// Whether the optional membership feature (sign-in, trial, PayFast
-/// subscription) is compiled in. Off by default: the compass, the sun, the
-/// centres and the guide never depend on it.
-const bool kMembershipEnabled =
-    bool.fromEnvironment('MEMBERSHIP_ENABLED', defaultValue: false);
-
 /// Store builds (Google Play / App Store) hide every purchase or subscribe
-/// control and keep only sign-in and the membership status, to stay within the
-/// stores' in-app purchase rules.
+/// control — including the "Pay now" button on the trial page and the
+/// paywall — and keep only login and the membership status, to stay within
+/// the stores' in-app purchase rules.
 const bool kStoreBuild = bool.fromEnvironment('STORE_BUILD', defaultValue: false);
 
-/// Membership API (the Vercel deployment of the web edition). Placeholder.
+/// Our own API (the Vercel deployment of the web edition): `/api/me`,
+/// `/api/centres`, `/api/account/password`, `/api/payfast/*`, `/api/admin/*`.
+/// Placeholder — supply the real one with `--dart-define`.
 const String kMembershipApiBaseUrl = String.fromEnvironment(
   'MEMBERSHIP_API_BASE_URL',
   defaultValue: 'https://example.invalid',
 );
 
-/// Supabase project URL used for e-mail one-time-code sign-in. Placeholder.
+/// Supabase project URL used for e-mail + password authentication (the Auth
+/// REST endpoints, no SDK). Placeholder.
 const String kSupabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
   defaultValue: 'https://your-project.supabase.co',
@@ -38,6 +43,14 @@ const String kSupabaseUrl = String.fromEnvironment(
 const String kSupabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue: 'YOUR_SUPABASE_ANON_KEY',
+);
+
+/// Public site of the web edition. "Forgot password" asks Supabase to send a
+/// recovery mail pointing at `{kSiteUrl}/reset`, which opens in the phone's
+/// browser — so the app needs no deep links. Placeholder.
+const String kSiteUrl = String.fromEnvironment(
+  'SITE_URL',
+  defaultValue: 'https://example.invalid',
 );
 
 /// Soft cap of the on-disk map tile cache (about 50 MB). Ignored (cache off)

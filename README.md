@@ -11,8 +11,10 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 * Five app languages — English, isiZulu, Português, Chichewa, iciBemba — the
   chosen one replaces every piece of text in the app
 * Dark only, portrait only, Material 3
-* Offline for the compass, the sun readouts and the guide; only the map needs the
-  internet
+* Members-only: e-mail + password login, then a 7-day trial or R100/month; the
+  whole app (compass included) sits behind that gate
+* Offline for the compass, the sun readouts and the guide once a member is in;
+  the first login, the centres list and the map need the internet
 
 ---
 
@@ -23,7 +25,7 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/main.dart` | Entry point: portrait lock, `SharedPreferences`, `ProviderScope` |
 | `lib/app.dart` | Root `MaterialApp` (dark theme, clamped text scale) |
 | `lib/app_providers.dart` | App-wide providers (preferences, repositories, sensors, wake lock, performance profile, clock) |
-| `lib/core/config/app_config.dart` | Feature flags (`kMembershipEnabled`, `kStoreBuild`), API / Supabase placeholders, tile-cache cap |
+| `lib/core/config/app_config.dart` | `kStoreBuild`, API / Supabase / site URLs (all `--dart-define`), tile-cache cap |
 | `lib/core/l10n/strings.dart` | **Every** user-visible string: English + authored isiZulu + translation key (`Bi(en, zu, key:, args:)`) |
 | `lib/core/l10n/app_language.dart` | App languages (English / isiZulu / Portuguese / Chichewa / Bemba), `translations.json` loader, fallback, Material locales |
 | `lib/core/perf/performance_profile.dart` | `low` / `normal` profile and the knobs it controls |
@@ -40,10 +42,11 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/core/format/formatters.dart` | Bearings, distances ("1 234 km"), DMS, coordinates |
 | `lib/core/net/connectivity_probe.dart` | Tiny reachability probe for the map's offline notice |
 | `lib/data/models/centre.dart` | Centre model + JSON parsing |
-| `lib/data/repositories/centres_repository.dart` | Loads/sorts/groups `assets/centres.json` |
+| `lib/data/local/centres_cache.dart` | App-private (keystore/keychain) cache of the downloaded centres list |
+| `lib/data/repositories/centres_repository.dart` | Downloads `GET /api/centres`, sorts/groups it, caches it for offline use |
 | `lib/data/repositories/location_repository.dart` | geolocator wrapper (permissions, fixes, settings, speed/course) |
 | `lib/data/repositories/towns_repository.dart` | Loads/filters `assets/towns.json` |
-| `lib/data/local/preferences_store.dart` | Persisted manual location, locked bearing, language, Simple mode, entitlement cache |
+| `lib/data/local/preferences_store.dart` | Persisted manual location, locked bearing, language, Simple mode, entitlement cache, per-account "trial page seen" flag |
 | `lib/services/compass_service.dart` | flutter_compass wrapper (rung 1) |
 | `lib/services/motion_sensors.dart` | sensors_plus wrapper (magnetometer / accelerometer / gyroscope) |
 | `lib/services/wake_lock_service.dart` | wakelock_plus wrapper |
@@ -56,18 +59,17 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/features/location/…` | Live GPS, manual entry, town picker, pick-from-centres |
 | `lib/features/towns/…` | Searchable grouped town picker |
 | `lib/features/settings/…` | Language switcher + Simple mode (shown on the Guide tab) |
-| `lib/features/membership/…` | Optional membership (Supabase OTP, `/api/me`, PayFast), behind `kMembershipEnabled` |
+| `lib/features/membership/…` | The login gate: `auth_gate.dart` (state machine → screens), e-mail + password auth, `/api/me`, forced password change, trial page, paywall, account screen, admin tools |
 | `lib/features/centres/…` | Map, clustering, search, nearest, grouped list, bottom sheet |
 | `lib/features/guide/…` | Guide screen (coordinates, steps, accuracy, about) |
 | `lib/widgets/…` | Header, `LocalizedText` / `LanguageScope`, cards, buttons, bottom navigation |
-| `assets/centres.json` | The 88 centres in 15 regions — add centres here, not in code |
 | `assets/towns.json` | Towns for the Location tab picker |
 | `assets/translations.json` | Translation tables (zu / pt / ny / bem), one entry per `S.*` key |
 | `assets/fonts/` | Bundled IBM Plex Sans / Mono and Source Serif 4 (`tool/fetch_fonts.sh`) |
 | `assets/logo.png` (+ `2.0x/`, `3.0x/`) | Crest (replace with the official artwork) |
 | `platform_config/…` | Android manifest / Gradle, iOS Info.plist / Podfile |
 | `tool/apply_platform_config.sh` | Copies `platform_config/` over a Flutter scaffold |
-| `test/…` | Unit tests: bearing, distance, declination, sun, smoothing, heading math, ladder, calibration, GPS, l10n, assets, profile |
+| `test/…` | Unit tests: bearing, distance, declination, sun, smoothing, heading math, ladder, calibration, GPS, l10n, assets, profile, auth client, gate state machine, gate widgets, admin tools, centres repository |
 
 ---
 
@@ -182,7 +184,11 @@ Added with the sensor ladder:
 | `test/features/heading_ladder_test.dart` | Failover ladder under `fake_async`: timeouts, absent sensors, stale → restart → next rung, provisional samples, restart |
 | `test/features/calibration_and_gps_test.dart` | Sun / north calibration offset math (true vs magnetic), GPS course accepted only while walking and flagged true-north |
 | `test/core/l10n_test.dart` | One language at a time, fallback to English; locale suggestion; every `Bi` has a key, every key exists in every language with the same placeholders |
-| `test/data/centres_asset_test.dart`, `test/data/towns_repository_test.dart` | 88 centres / 15 regions with valid coordinates and unique ids; towns parsing, search and filtering |
+| `test/data/centres_repository_test.dart`, `test/data/towns_repository_test.dart` | `GET /api/centres` parsing, sorting, grouping and the offline cache (mock `http.Client`); towns parsing, search and filtering |
+| `test/features/membership/auth_client_test.dart` | Supabase Auth error mapping (every GoTrue shape), sign-up without a session, recovery redirect, 4xx refresh, `/api/*` error codes |
+| `test/features/membership/membership_gate_test.dart` | The gate state machine: first run, trial page once per account, paywall, `403 password_change_required`, 401 sign-out, offline cache allowed / denied, access ending mid-session |
+| `test/features/membership/membership_widgets_test.dart` | Login validation, forced change has no back path (`PopScope`), store builds hide "Pay now", admin entry hidden for non-admins, the temporary password is gone once the dialog closes |
+| `test/features/membership/admin_controller_test.dart` | Admin search / add centre / generate password / delete user, including `admin_required`, `duplicate_centre`, `invalid_centre` fields and `cannot_delete_self` |
 | `test/core/performance_profile_test.dart` | Profile detection and the Simple-mode override |
 
 ---
@@ -222,10 +228,13 @@ flutter build apk --release --split-per-abi --target-platform android-arm,androi
 flutter build appbundle --release
 # Output:  build/app/outputs/bundle/release/app-release.aab
 
-# Optional flags:
-#   --dart-define=STORE_BUILD=true        hide purchase UI (store builds)
-#   --dart-define=MEMBERSHIP_ENABLED=true turn the membership feature on
-#   --dart-define=MEMBERSHIP_API_BASE_URL=… SUPABASE_URL=… SUPABASE_ANON_KEY=…
+# Required (the app cannot log anyone in without them):
+#   --dart-define=MEMBERSHIP_API_BASE_URL=https://api.example.org
+#   --dart-define=SUPABASE_URL=https://<project>.supabase.co
+#   --dart-define=SUPABASE_ANON_KEY=<anon key>
+#   --dart-define=SITE_URL=https://example.org   (password-reset page: {SITE_URL}/reset)
+# Optional:
+#   --dart-define=STORE_BUILD=true               hide every purchase control
 ```
 
 Release builds use R8 minification and resource shrinking (rules in
@@ -365,13 +374,90 @@ Not translated: place names (towns, regions, centre names and addresses come
 from the data files as they are) and the iOS permission prompts, which the
 system shows from `Info.plist` in English · isiZulu.
 
+## Membership — the login gate
+
+Every screen is behind the gate, the compass included: `lib/app.dart` builds
+`AuthGate`, and `AppShell` (sensors, location stream, wake lock) is created
+only once the gate passes.
+
+One state machine decides what is shown — `lib/features/membership/membership_controller.dart`:
+
+| Phase | Screen | How it is reached |
+| --- | --- | --- |
+| `loading` | crest + spinner | restoring the stored session, first `/api/me` |
+| `signedOut` | log in / create account | no session, or a 401 from our API |
+| `awaitingEmailConfirm` | "check your e-mail" | sign-up with confirmation on, or `email_not_confirmed` |
+| `mustChangePassword` | forced password change | `/api/me` says `must_change_password`, or any `/api/*` answers `403 password_change_required` |
+| `trialIntro` | what the trial includes + "Pay now" | first login of a trial account (once per user id) |
+| `paywall` | why there is no access + "Pay now" | the server says `access:false` |
+| `offlineLocked` | "connect once to continue" | signed in, offline, and the cache cannot vouch for the member |
+| `ready` | the app | the server (or a still-valid cached entitlement) says yes |
+
+Rules the gate keeps:
+
+* **The server decides.** The 7-day trial starts on the first `/api/me`; the
+  app never grants access on its own.
+* **`403 password_change_required` is never a sign-out** — it means "go to the
+  change-password screen". Only a 401 from our API, or a 4xx on the Supabase
+  refresh grant, signs the member out locally.
+* **Being offline never signs anyone out.** The last `/api/me` body is cached;
+  offline it is trusted until the paid-through / trial-end date it carries (or
+  24 h if it carries no date). A cached `must_change_password` still blocks
+  entry — that one has to be fixed online.
+* **Online always overrides the cache.**
+* Access is re-checked when the app resumes and every 15 minutes. If it ends
+  mid-session the compass is stopped, any pushed screen is popped and the
+  paywall takes over.
+* Paying opens the signed PayFast page in the external browser (R100/month);
+  coming back, `/api/me` is polled. Cancelling keeps access until the paid
+  month ends. All of it is hidden when `kStoreBuild` is true.
+
+**Forgot password** sends the member a Supabase recovery link
+(`POST /auth/v1/recover?redirect_to={SITE_URL}/reset`) — the link opens the web
+page in the phone's browser, so the app needs no deep links.
+
+**Admin tools** (Account ▸ Admin tools) appear only when `/api/me` returns
+`is_admin: true`, and every call is checked again by the server:
+
+* **Add a centre** → `POST /api/admin/centres`, then the centres list is
+  re-downloaded.
+* **Auto-generate a password** → `POST /api/admin/users/reset-password`. The
+  password is shown **once**, with a Copy button. It is never stored in state,
+  in preferences or in a log; closing the dialog forgets it, and the member is
+  forced to change it at their next login.
+* **Delete a user** → `POST /api/admin/users/delete`, after typing the member's
+  e-mail address to confirm. `cannot_delete_self` and `payfast_cancel_failed`
+  are shown as their own messages — nothing is deleted in those cases.
+
+The centres list itself (`GET /api/centres`) is downloaded after login and
+cached in `flutter_secure_storage` (app-private, keystore / keychain backed),
+so the Centres tab keeps working offline. It is dropped on log out and
+whenever the server answers 401 or 402.
+
+### Known limits
+
+* The compass maths runs on the device. A modified build could skip the gate
+  entirely — the paid thing is the service (centres, support, updates), not the
+  arithmetic. Anything that must be protected has to stay server-side.
+* Trials are per account, so a new e-mail address starts a new trial. The
+  server can tighten this (device / payment fingerprinting) if it matters.
+* Apple and Google require their own in-app purchase for digital goods. Build
+  store releases with `--dart-define=STORE_BUILD=true`: that hides every
+  purchase control (including the trial page's "Pay now"), leaving sign-in and
+  status only. PayFast is for the sideloaded / direct build.
+* The temporary-password dialog is not screenshot-proof (see "Could not be
+  verified").
+* Logging out keeps the per-account "trial page seen" flag, so the page does
+  not reappear after every log-in; it is keyed by Supabase user id.
+
+---
+
 ## Feature flags
 
 | Flag | Default | Effect |
 | --- | --- | --- |
-| `kMembershipEnabled` (`--dart-define=MEMBERSHIP_ENABLED`) | `false` | Shows the Membership card on the Guide tab: Supabase e-mail OTP sign-in, `/api/me`, PayFast checkout / cancel, offline entitlement cache (`flutter_secure_storage` for tokens) |
 | `kStoreBuild` (`--dart-define=STORE_BUILD`) | `false` | Hides every purchase / subscribe / cancel control; sign-in and status remain |
-| `MEMBERSHIP_API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` | placeholders | See `lib/core/config/app_config.dart` |
+| `MEMBERSHIP_API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SITE_URL` | placeholders | Required at build time; see `lib/core/config/app_config.dart`. Nothing secret is committed — the anon key is a build argument |
 
 ---
 
@@ -382,11 +468,13 @@ system shows from `Info.plist` in English · isiZulu.
    re-run `dart run flutter_launcher_icons` and
    `dart run flutter_native_splash:create`. The file in the repo is a
    placeholder generated for this build.
-2. **Verify the centre and town coordinates.** `assets/centres.json` now holds
-   the 88 centres in 15 regions from the web edition and `assets/towns.json` the
-   town list; both are the single source of truth for the map, the grouped list
-   and the pickers. The coordinates are as supplied and were not re-checked
-   against the ground.
+2. **Seed the centres on the server and verify the coordinates.** The centres
+   list is no longer bundled: the app downloads it from `GET /api/centres`
+   after login and caches it privately on the device. The 88 centres in 15
+   regions from the web edition are kept as seed data in `centres.json` (repo
+   root) and `reference/centres.json` — import one of them into the database.
+   `assets/towns.json` is still bundled and is the source for the town picker.
+   The coordinates are as supplied and were not re-checked against the ground.
 3. **Confirm the Msamo and Location behaviour.** Both are built as described
    below; please confirm this is what you want:
    * *Msamo*: shows the required true bearing and the matching magnetic bearing
@@ -416,7 +504,7 @@ system shows from `Info.plist` in English · isiZulu.
 `wakelock_plus` (screen on), `device_info_plus` (performance profile),
 `flutter_map` + `latlong2` + `flutter_map_marker_cluster` (map), `url_launcher`
 (directions/calls/PayFast), `shared_preferences` (settings), `flutter_secure_storage`
-+ `http` (membership, only active behind the flag), `google_fonts` (bundled
++ `http` (session tokens, membership API and the centres cache), `google_fonts` (bundled
 Source Serif 4 + IBM Plex Sans/Mono, no runtime fetching).
 
 Riverpod is pinned to the 2.x line (`^2.6.1`) because that is the API the code
@@ -444,4 +532,9 @@ required by the OSM tile usage policy. For heavy traffic switch the URL in
 * Behaviour on specific low-end phones (Android 7 / 1 GB, iPhone 6s) and the
   sensors_plus axis conventions on iOS were reasoned from documentation only.
 * The membership API is implemented from the contract, not against a live
-  server.
+  server: the login gate, the trial page, the paywall and the admin tools were
+  exercised only against mock HTTP clients in the tests.
+* Android `FLAG_SECURE` is **not** applied to the temporary-password dialog: it
+  needs a plugin (`flutter_windowmanager`) and has no iOS equivalent. The
+  dialog keeps the password only in its own widget state, but a screenshot is
+  still possible. See "Known limits".

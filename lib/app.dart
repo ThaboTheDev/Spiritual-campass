@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/l10n/strings.dart';
 import 'core/theme/app_theme.dart';
+import 'features/membership/auth_gate.dart';
 import 'features/settings/language_controller.dart';
-import 'features/shell/app_shell.dart';
 import 'widgets/language_scope.dart';
 
 /// The root widget: a single dark Material 3 app.
@@ -34,7 +34,7 @@ class TshkApp extends ConsumerWidget {
           locale: language.materialLocale,
           supportedLocales: AppLanguage.materialLocales,
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: const AppShell(),
+          home: const AuthGate(),
           builder: (BuildContext context, Widget? child) {
             // Never let the OS font scale make the readouts unreadable, and
             // keep 320 dp phones from overflowing at large system scales.

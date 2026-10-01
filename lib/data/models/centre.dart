@@ -1,9 +1,10 @@
 import '../../core/geo/coordinates.dart';
 
-/// One spiritual centre (isikhungo), loaded from `assets/centres.json`.
+/// One spiritual centre (isikhungo), fetched from `GET /api/centres`.
 ///
-/// The whole Centres screen is built from this file, so new centres can be
-/// added without touching any Dart code.
+/// The list is no longer bundled with the app: it is downloaded after login
+/// (so it stays protected on the server) and kept in an app-private cache
+/// for offline use. See `CentresRepository`.
 class Centre {
   const Centre({
     required this.id,
@@ -76,6 +77,9 @@ class Centre {
         region.toLowerCase().contains(needle);
   }
 
+  /// Reads the long-form shape (`id`, `name`, `region`, …), used by the
+  /// cache round trip and the tests. The wire format of `/api/centres` is
+  /// the short one and is mapped by `CentresRepository.centreFromRemoteJson`.
   factory Centre.fromJson(Map<String, dynamic> json) {
     final String id = (json['id'] as String?)?.trim() ?? '';
     final String name = (json['name'] as String?)?.trim() ?? '';
@@ -143,7 +147,7 @@ class Centre {
   String toString() => 'Centre($id, $name, $region)';
 }
 
-/// Thrown when `assets/centres.json` cannot be parsed.
+/// Thrown when a centre payload cannot be read.
 class CentreFormatException implements Exception {
   const CentreFormatException(this.message);
 

@@ -7,6 +7,7 @@ import '../../core/l10n/strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/centre.dart';
 import '../../data/models/town.dart';
+import '../../data/repositories/centres_repository.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
@@ -325,9 +326,10 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
   Future<void> _pickFromCentres(BuildContext context) async {
     List<Centre> centres = <Centre>[];
     try {
-      final List<Centre> loaded = await ref.read(centresProvider.future);
-      centres =
-          loaded.where((Centre centre) => centre.hasCoordinates).toList();
+      final CentresData loaded = await ref.read(centresProvider.future);
+      centres = loaded.centres
+          .where((Centre centre) => centre.hasCoordinates)
+          .toList();
     } catch (_) {
       centres = <Centre>[];
     }

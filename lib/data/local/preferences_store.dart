@@ -5,8 +5,13 @@ import '../../core/geo/coordinates.dart';
 /// Small typed wrapper around `SharedPreferences`.
 ///
 /// Persisted: the manual location, the locked msamo direction, the last tab,
-/// the app language, the "Simple mode" switch and the last confirmed
-/// membership entitlement (for offline use). Everything else is derived.
+/// the app language, the "Simple mode" switch, the last confirmed membership
+/// entitlement (for offline use) and the per-account "trial page already
+/// seen" flag. Everything else is derived.
+///
+/// Nothing secret lives here: tokens go to `flutter_secure_storage`
+/// (`session_store.dart`) and the centres list to the private cache
+/// (`centres_cache.dart`).
 class PreferencesStore {
   PreferencesStore(this._preferences);
 
@@ -22,6 +27,7 @@ class PreferencesStore {
   static const String _keyLanguage = 'l10n.secondaryLanguage';
   static const String _keySimpleMode = 'perf.simpleMode';
   static const String _keyEntitlement = 'membership.entitlement';
+  static const String _keyTrialIntroPrefix = 'membership.trialIntro.';
 
   /// The saved manual location, or `null` when none has been saved.
   GeoPoint? get manualLocation {
@@ -108,5 +114,33 @@ class PreferencesStore {
       return;
     }
     await _preferences.setString(_keyEntitlement, json);
+  }
+
+  /// Whether this account has already been shown the trial page.
+  ///
+  /// Keyed by the Supabase user id so the page appears once per account, not
+  /// once per device. An empty id (a session stored before the id was kept)
+  /// counts as "not seen".
+  bool trialIntroSeen(String userId) {
+    if (userId.isEmpty) {
+      return false;
+    }
+    return _preferences.getBool('$_keyTrialIntroPrefix$userId') ?? false;
+  }
+
+  /// Remembers that this account has seen the trial page.
+  Future<void> markTrialIntroSeen(String userId) async {
+    if (userId.isEmpty) {
+      return;
+    }
+    await _preferences.setBool('$_keyTrialIntroPrefix$userId', true);
+  }
+
+  /// Forgets the flag for one account (so the trial page shows again).
+  Future<void> clearTrialIntroSeen(String userId) async {
+    if (userId.isEmpty) {
+      return;
+    }
+    await _preferences.remove('$_keyTrialIntroPrefix$userId');
   }
 }

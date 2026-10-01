@@ -56,7 +56,8 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
   Widget build(BuildContext context) {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
-    final AsyncValue<List<Centre>> centresAsync = ref.watch(centresProvider);
+    final AsyncValue<List<Centre>> centresAsync =
+        ref.watch(centresListProvider);
     final AsyncValue<List<RegionGroup>> groupsAsync =
         ref.watch(regionGroupsProvider);
     final AsyncValue<List<Centre>> byDistanceAsync =
@@ -64,8 +65,19 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
     final NearestCentre? nearest = ref.watch(nearestCentreProvider);
     final GeoPoint? userPoint = ref.watch(effectiveLocationProvider);
     final String query = ref.watch(centreSearchProvider);
+    final CentresData? data = ref.watch(centresProvider).valueOrNull;
 
     final List<Centre> allCentres = centresAsync.valueOrNull ?? <Centre>[];
+
+    // Nothing to show: say *why* (no connection yet, or the server sent an
+    // empty list) rather than "no results", which only fits a search.
+    final bool nothingDownloaded =
+        data == null || data.offline || data.blocked;
+    final Bi emptyMessage = allCentres.isNotEmpty
+        ? S.noResults
+        : nothingDownloaded
+            ? S.centresOffline
+            : S.centresEmpty;
 
     return SafeArea(
       bottom: false,
@@ -175,9 +187,9 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                     ),
                   )
                 else if (_sortedByDistance)
-                  _buildDistanceList(byDistanceAsync)
+                  _buildDistanceList(byDistanceAsync, emptyMessage)
                 else
-                  _buildRegionList(groupsAsync),
+                  _buildRegionList(groupsAsync, emptyMessage),
               ],
             ),
           ),
@@ -186,12 +198,15 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
     );
   }
 
-  Widget _buildRegionList(AsyncValue<List<RegionGroup>> groupsAsync) {
+  Widget _buildRegionList(
+    AsyncValue<List<RegionGroup>> groupsAsync,
+    Bi emptyMessage,
+  ) {
     final List<RegionGroup> groups = groupsAsync.valueOrNull ?? <RegionGroup>[];
     if (groups.isEmpty) {
       return SectionCard(
         child: LocalizedText(
-          S.noResults,
+          emptyMessage,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       );
@@ -225,13 +240,16 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
     );
   }
 
-  Widget _buildDistanceList(AsyncValue<List<Centre>> byDistanceAsync) {
+  Widget _buildDistanceList(
+    AsyncValue<List<Centre>> byDistanceAsync,
+    Bi emptyMessage,
+  ) {
     final List<Centre> centres =
         byDistanceAsync.valueOrNull ?? <Centre>[];
     if (centres.isEmpty) {
       return SectionCard(
         child: LocalizedText(
-          S.noResults,
+          emptyMessage,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       );

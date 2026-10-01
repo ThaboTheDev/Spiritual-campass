@@ -1,70 +1,160 @@
 import 'dart:convert';
 
-import 'package:flutter/services.dart' show rootBundle;
-
+import '../../features/membership/membership_api.dart';
+import '../local/centres_cache.dart';
 import '../models/centre.dart';
 
-/// Reads the list of centres from the bundled `assets/centres.json`.
+/// The centres as the Centres tab needs them: the list, the regions the
+/// server knows about, and where the data came from.
+class CentresData {
+  const CentresData({
+    this.centres = const <Centre>[],
+    this.regions = const <String>[],
+    this.fromCache = false,
+    this.offline = false,
+    this.blocked = false,
+  });
+
+  /// Nothing to show.
+  static const CentresData empty = CentresData();
+
+  /// Every centre, sorted by region then name.
+  final List<Centre> centres;
+
+  /// Region names as sent by the server (used by the admin "Add centre"
+  /// dropdown). Falls back to the regions found in [centres].
+  final List<String> regions;
+
+  /// The list came from the offline cache, not from the server.
+  final bool fromCache;
+
+  /// The server could not be reached on the last attempt.
+  final bool offline;
+
+  /// The server refused the list (401 / 402). The gate decides what happens
+  /// next; the screen just shows an empty state.
+  final bool blocked;
+
+  bool get isEmpty => centres.isEmpty;
+
+  CentresData copyWith({
+    List<Centre>? centres,
+    List<String>? regions,
+    bool? fromCache,
+    bool? offline,
+    bool? blocked,
+  }) =>
+      CentresData(
+        centres: centres ?? this.centres,
+        regions: regions ?? this.regions,
+        fromCache: fromCache ?? this.fromCache,
+        offline: offline ?? this.offline,
+        blocked: blocked ?? this.blocked,
+      );
+}
+
+/// Fetches the centres from `GET /api/centres` and keeps the last good copy
+/// in an app-private cache so the list still works offline.
 ///
-/// The file is the single source of truth for the Centres tab: edit the JSON to
-/// add, rename or move a centre, and the map, the search and the grouped list
-/// all follow. Nothing about the centres lives in Dart.
+/// The JSON is deliberately terse on the wire (`{id, r, n, a, p, la, lo}`);
+/// [parseRemote] maps it onto [Centre]. Sorting, grouping and searching are
+/// unchanged from the bundled-asset version.
 class CentresRepository {
-  const CentresRepository({this.assetPath = 'assets/centres.json'});
+  const CentresRepository({required this.api, required this.cache});
 
-  /// Path of the JSON file inside the asset bundle.
-  final String assetPath;
+  final MembershipApiClient api;
+  final CentresCache cache;
 
-  /// Loads every centre, sorted by region and then by name.
+  /// `GET /api/centres`, cached on success.
   ///
-  /// Throws a [CentreFormatException] when the file is not valid JSON or an
-  /// entry is missing its `id` / `name`.
-  Future<List<Centre>> load() async {
-    final String raw = await rootBundle.loadString(assetPath);
-    return parse(raw);
+  /// Throws [MembershipOffline] when the host is unreachable and
+  /// [MembershipApiException] for a non-2xx answer (notably 402
+  /// `subscription_required`), so the caller can decide.
+  Future<CentresData> fetchRemote(String accessToken) async {
+    final Map<String, dynamic> body = await api.centres(accessToken);
+    final CentresData data = parseRemote(body);
+    await cache.write(jsonEncode(body));
+    return data;
   }
 
-  /// Parses the raw JSON. Exposed (and unit tested) separately from [load] so
-  /// the format can be checked without an asset bundle.
-  List<Centre> parse(String raw) {
-    if (raw.trim().isEmpty) {
-      throw const CentreFormatException('The centres file is empty.');
+  /// The last good list, or `null` when nothing is cached (or it is corrupt).
+  Future<CentresData?> readCache() async {
+    final String? raw = await cache.read();
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
     }
-
-    late final Object? decoded;
     try {
-      decoded = jsonDecode(raw);
-    } on FormatException catch (error) {
-      throw CentreFormatException('The centres file is not valid JSON: $error');
-    }
-
-    List<Object?> entries;
-    if (decoded is Map<String, dynamic>) {
-      final Object? list = decoded['centres'];
-      if (list is List<Object?>) {
-        entries = list;
-      } else {
-        throw const CentreFormatException(
-          'The centres file must contain a "centres" array.',
-        );
+      final Object? decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
       }
-    } else if (decoded is List<Object?>) {
-      entries = decoded;
-    } else {
-      throw const CentreFormatException(
-        'The centres file must be a JSON array, or an object with a "centres" '
-        'array.',
-      );
+      return parseRemote(decoded).copyWith(fromCache: true);
+    } catch (_) {
+      return null;
     }
+  }
 
+  /// Drops the cached list (log out, 401, 402).
+  Future<void> clearCache() => cache.clear();
+
+  /// Maps `{regions:[…], centres:[{id,r,n,a,p,la,lo}]}` onto [CentresData].
+  ///
+  /// Entries that cannot be read (no id, no name) are skipped rather than
+  /// failing the whole list: one bad row must not hide the other 87 centres.
+  static CentresData parseRemote(Map<String, dynamic> body) {
     final List<Centre> centres = <Centre>[];
-    for (final Object? entry in entries) {
-      if (entry is! Map<String, dynamic>) {
-        throw const CentreFormatException('Each centre must be a JSON object.');
+    final Object? rawCentres = body['centres'];
+    if (rawCentres is List<Object?>) {
+      for (final Object? entry in rawCentres) {
+        if (entry is! Map<String, dynamic>) {
+          continue;
+        }
+        final Centre? centre = centreFromRemoteJson(entry);
+        if (centre != null) {
+          centres.add(centre);
+        }
       }
-      centres.add(Centre.fromJson(entry));
     }
-    return sort(centres);
+
+    final List<String> regions = <String>[];
+    final Object? rawRegions = body['regions'];
+    if (rawRegions is List<Object?>) {
+      for (final Object? region in rawRegions) {
+        final String name = region?.toString().trim() ?? '';
+        if (name.isNotEmpty && !regions.contains(name)) {
+          regions.add(name);
+        }
+      }
+    }
+    if (regions.isEmpty) {
+      for (final Centre centre in centres) {
+        if (!regions.contains(centre.region)) {
+          regions.add(centre.region);
+        }
+      }
+    }
+    regions.sort((String a, String b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return CentresData(centres: sort(centres), regions: regions);
+  }
+
+  /// One wire row → [Centre]; `null` when it has no usable id or name.
+  static Centre? centreFromRemoteJson(Map<String, dynamic> json) {
+    final String name = (json['n'] ?? json['name'] ?? '').toString().trim();
+    if (name.isEmpty) {
+      return null;
+    }
+    final String region = (json['r'] ?? json['region'] ?? '').toString().trim();
+    final String id = (json['id'] ?? '').toString().trim();
+    return Centre(
+      id: id.isNotEmpty ? id : _slug('$region-$name'),
+      name: name,
+      region: region.isNotEmpty ? region : 'Other',
+      address: (json['a'] ?? json['address'] ?? '').toString().trim(),
+      phone: (json['p'] ?? json['phone'] ?? '').toString().trim(),
+      lat: _toDouble(json['la'] ?? json['lat']),
+      lng: _toDouble(json['lo'] ?? json['lng']),
+    );
   }
 
   /// Sorts by region (alphabetically) and then by centre name.
@@ -95,6 +185,21 @@ class CentresRepository {
         RegionGroup(region: region, centres: grouped[region]!),
     ];
   }
+
+  static double? _toDouble(Object? value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value.trim());
+    }
+    return null;
+  }
+
+  static String _slug(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
 }
 
 /// A region heading and the centres under it, ready for the list view.
