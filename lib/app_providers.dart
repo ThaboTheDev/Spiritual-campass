@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/net/connectivity_probe.dart';
 import 'core/perf/performance_profile.dart';
+import 'data/local/centres_cache.dart';
 import 'data/local/preferences_store.dart';
 import 'data/repositories/location_repository.dart';
 import 'services/compass_service.dart';
@@ -25,6 +26,14 @@ final Provider<PreferencesStore> preferencesStoreProvider =
     Provider<PreferencesStore>(
   (ref) => PreferencesStore(ref.watch(sharedPreferencesProvider)),
 );
+
+/// The app-private cache of the last good `/api/centres` body.
+///
+/// Declared here (not with the other centre providers) so signing out can
+/// empty it without the membership gate having to know about the Centres
+/// feature.
+final Provider<CentresCache> centresCacheProvider =
+    Provider<CentresCache>((ref) => const SecureCentresCache());
 
 /// The platform location stack (geolocator).
 final Provider<LocationRepository> locationRepositoryProvider =

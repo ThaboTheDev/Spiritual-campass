@@ -64,7 +64,6 @@ flutter:
     # 2.0x / 3.0x variants under assets/2.0x and assets/3.0x are picked up
     # automatically.
     - assets/logo.png
-    - assets/centres.json
     - assets/towns.json
     - assets/translations.json
     # Bundled fonts (run tool/fetch_fonts.sh once). google_fonts looks the

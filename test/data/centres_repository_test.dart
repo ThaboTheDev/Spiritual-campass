@@ -1,137 +1,289 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:tshk_compass/data/local/centres_cache.dart';
 import 'package:tshk_compass/data/models/centre.dart';
 import 'package:tshk_compass/data/repositories/centres_repository.dart';
+import 'package:tshk_compass/features/membership/membership_api.dart';
 
-const String _sampleJson = '''
-{
-  "version": 1,
-  "centres": [
-    {
-      "id": "gauteng-pretoria",
-      "name": "Pretoria",
-      "region": "Gauteng",
-      "address": "Cnr Bloed & Bosman Street, Pretoria",
-      "phone": "+27 81 032 3331",
-      "lat": -25.7461,
-      "lng": 28.1881,
-      "verified": false
+/// `GET /api/centres` answers with the terse wire format; the list, the
+/// sorting and the offline cache are all tested from it.
+const Map<String, dynamic> _body = <String, dynamic>{
+  'regions': <String>['Gauteng', 'KwaZulu-Natal', 'Free State'],
+  'centres': <Map<String, dynamic>>[
+    <String, dynamic>{
+      'id': 'gauteng-pretoria',
+      'r': 'Gauteng',
+      'n': 'Pretoria',
+      'a': 'Cnr Bloed & Bosman Street, Pretoria',
+      'p': '+27 81 032 3331',
+      'la': -25.7461,
+      'lo': 28.1881,
     },
-    {
-      "id": "gauteng-ebhubesini",
-      "name": "eBhubesini",
-      "region": "Gauteng",
-      "address": "10 Small Street, Marshalltown, Johannesburg",
-      "town": "Marshalltown",
-      "phone": "+27 67 300 3886",
-      "lat": -26.2056,
-      "lng": 28.0456
+    <String, dynamic>{
+      'id': 'gauteng-ebhubesini',
+      'r': 'Gauteng',
+      'n': 'eBhubesini',
+      'a': '10 Small Street, Marshalltown, Johannesburg',
+      'p': '+27 67 300 3886',
+      'la': -26.2056,
+      'lo': 28.0456,
     },
-    {
-      "id": "kzn-durban",
-      "name": "Durban",
-      "region": "KwaZulu-Natal",
-      "address": "1 Point Road, Durban",
-      "phone": "+27 31 000 0000",
-      "lat": -29.8579,
-      "lng": 31.0292,
-      "verified": true
+    <String, dynamic>{
+      'id': 'kzn-durban',
+      'r': 'KwaZulu-Natal',
+      'n': 'Durban',
+      'a': '1 Point Road, Durban',
+      'p': '+27 31 000 0000',
+      'la': -29.8579,
+      'lo': 31.0292,
     },
-    {
-      "id": "fs-bloem",
-      "name": "Bloemfontein",
-      "region": "Free State",
-      "address": "",
-      "phone": "",
-      "lat": null,
-      "lng": null
-    }
-  ]
-}
-''';
+    <String, dynamic>{
+      'id': 'fs-bloem',
+      'r': 'Free State',
+      'n': 'Bloemfontein',
+      'a': '',
+      'p': '',
+      'la': null,
+      'lo': null,
+    },
+  ],
+};
+
+CentresRepository repositoryWith({
+  required http.Response Function(http.Request request) handler,
+  CentresCache? cache,
+}) =>
+    CentresRepository(
+      api: MembershipApiClient(
+        client: MockClient((http.Request request) async => handler(request)),
+        baseUrl: 'https://api.example.org',
+      ),
+      cache: cache ?? MemoryCentresCache(),
+    );
 
 void main() {
-  final CentresRepository repository = const CentresRepository();
+  group('parseRemote', () {
+    test('reads every centre and maps the short field names', () {
+      final CentresData data = CentresRepository.parseRemote(_body);
 
-  group('CentresRepository.parse', () {
-    test('reads every centre', () {
-      final List<Centre> centres = repository.parse(_sampleJson);
-      expect(centres, hasLength(4));
+      expect(data.centres, hasLength(4));
+      final Centre centre = data.centres
+          .firstWhere((Centre c) => c.id == 'gauteng-ebhubesini');
+      expect(centre.name, 'eBhubesini');
+      expect(centre.region, 'Gauteng');
+      expect(centre.address, '10 Small Street, Marshalltown, Johannesburg');
+      expect(centre.phone, '+27 67 300 3886');
+      expect(centre.lat, -26.2056);
+      expect(centre.lng, 28.0456);
+      expect(centre.hasCoordinates, isTrue);
+      expect(centre.point!.latitude, -26.2056);
     });
 
     test('sorts by region then name', () {
-      final List<Centre> centres = repository.parse(_sampleJson);
+      final List<Centre> centres = CentresRepository.parseRemote(_body).centres;
+
       expect(centres.first.region, 'Free State');
-      expect(centres[1].region, 'Gauteng');
       expect(centres[1].name, 'eBhubesini');
       expect(centres[2].name, 'Pretoria');
       expect(centres.last.region, 'KwaZulu-Natal');
     });
 
-    test('maps every field', () {
-      final Centre centre = repository
-          .parse(_sampleJson)
-          .firstWhere((Centre c) => c.id == 'gauteng-ebhubesini');
-      expect(centre.name, 'eBhubesini');
-      expect(centre.region, 'Gauteng');
-      expect(centre.address, '10 Small Street, Marshalltown, Johannesburg');
-      expect(centre.town, 'Marshalltown');
-      expect(centre.phone, '+27 67 300 3886');
-      expect(centre.lat, -26.2056);
-      expect(centre.lng, 28.0456);
-      expect(centre.verified, isTrue); // defaults to true when absent
-      expect(centre.hasCoordinates, isTrue);
-      expect(centre.hasPhone, isTrue);
-      expect(centre.point!.latitude, -26.2056);
+    test('keeps the regions the server sent', () {
+      expect(
+        CentresRepository.parseRemote(_body).regions,
+        <String>['Free State', 'Gauteng', 'KwaZulu-Natal'],
+      );
     });
 
-    test('accepts a bare array as well', () {
-      final List<Centre> centres = repository.parse(
-        '[{"id": "a", "name": "A", "region": "Gauteng"}]',
-      );
-      expect(centres, hasLength(1));
-      expect(centres.single.name, 'A');
-      expect(centres.single.hasAddress, isFalse);
-      expect(centres.single.hasPhone, isFalse);
-      expect(centres.single.hasCoordinates, isFalse);
+    test('falls back to the regions found in the list', () {
+      final CentresData data =
+          CentresRepository.parseRemote(<String, dynamic>{
+        'centres': <Map<String, dynamic>>[
+          <String, dynamic>{'id': 'a', 'r': 'Limpopo', 'n': 'A'},
+        ],
+      });
+
+      expect(data.regions, <String>['Limpopo']);
     });
 
     test('a centre without coordinates still lists', () {
-      final Centre centre = repository
-          .parse(_sampleJson)
+      final Centre centre = CentresRepository.parseRemote(_body)
+          .centres
           .firstWhere((Centre c) => c.id == 'fs-bloem');
+
       expect(centre.hasCoordinates, isFalse);
       expect(centre.point, isNull);
       expect(centre.hasAddress, isFalse);
       expect(centre.hasPhone, isFalse);
     });
 
-    test('rejects broken JSON', () {
-      expect(() => repository.parse('not json'),
-          throwsA(isA<CentreFormatException>()));
+    test('an unreadable row is skipped, the rest still show', () {
+      final CentresData data =
+          CentresRepository.parseRemote(<String, dynamic>{
+        'centres': <Object>[
+          'rubbish',
+          <String, dynamic>{'id': 'x', 'r': 'Gauteng'},
+          <String, dynamic>{'id': 'y', 'r': 'Gauteng', 'n': 'Good'},
+        ],
+      });
+
+      expect(data.centres, hasLength(1));
+      expect(data.centres.single.name, 'Good');
     });
 
-    test('rejects an object without a centres array', () {
-      expect(() => repository.parse('{"foo": 1}'),
-          throwsA(isA<CentreFormatException>()));
+    test('a missing id is derived from the region and the name', () {
+      final CentresData data =
+          CentresRepository.parseRemote(<String, dynamic>{
+        'centres': <Map<String, dynamic>>[
+          <String, dynamic>{'r': 'KwaZulu-Natal', 'n': 'New Place'},
+        ],
+      });
+
+      expect(data.centres.single.id, 'kwazulu-natal-new-place');
     });
 
-    test('rejects an entry without an id', () {
-      expect(
-        () => repository.parse('[{"name": "No id", "region": "Gauteng"}]'),
-        throwsA(isA<CentreFormatException>()),
+    test('an empty body is an empty list, not a crash', () {
+      final CentresData data =
+          CentresRepository.parseRemote(const <String, dynamic>{});
+
+      expect(data.centres, isEmpty);
+      expect(data.regions, isEmpty);
+      expect(data.isEmpty, isTrue);
+    });
+
+    test('string coordinates are accepted', () {
+      final CentresData data =
+          CentresRepository.parseRemote(<String, dynamic>{
+        'centres': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': 'a',
+            'r': 'Gauteng',
+            'n': 'A',
+            'la': '-26.1',
+            'lo': '28.2',
+          },
+        ],
+      });
+
+      expect(data.centres.single.lat, -26.1);
+      expect(data.centres.single.lng, 28.2);
+    });
+  });
+
+  group('fetchRemote', () {
+    test('calls /api/centres with the bearer token and caches the body',
+        () async {
+      late final http.Request seen;
+      final MemoryCentresCache cache = MemoryCentresCache();
+      final CentresRepository repository = repositoryWith(
+        handler: (http.Request request) {
+          seen = request;
+          return http.Response(jsonEncode(_body), 200);
+        },
+        cache: cache,
+      );
+
+      final CentresData data = await repository.fetchRemote('token-abc');
+
+      expect(seen.url.toString(), 'https://api.example.org/api/centres');
+      expect(seen.headers['Authorization'], 'Bearer token-abc');
+      expect(data.centres, hasLength(4));
+      expect(data.fromCache, isFalse);
+      expect(cache.value, isNotNull);
+      expect(jsonDecode(cache.value!), isA<Map<String, dynamic>>());
+    });
+
+    test('an unreachable server throws MembershipOffline', () async {
+      final CentresRepository repository = repositoryWith(
+        handler: (http.Request request) => throw http.ClientException('down'),
+      );
+
+      await expectLater(
+        repository.fetchRemote('token'),
+        throwsA(isA<MembershipOffline>()),
       );
     });
 
-    test('rejects an empty file', () {
-      expect(() => repository.parse('   '),
-          throwsA(isA<CentreFormatException>()));
+    test('402 subscription_required surfaces for the gate', () async {
+      final CentresRepository repository = repositoryWith(
+        handler: (http.Request request) => http.Response(
+          jsonEncode(<String, dynamic>{'error': 'subscription_required'}),
+          402,
+        ),
+      );
+
+      await expectLater(
+        repository.fetchRemote('token'),
+        throwsA(
+          isA<MembershipApiException>().having(
+            (MembershipApiException e) => e.isSubscriptionRequired,
+            'isSubscriptionRequired',
+            isTrue,
+          ),
+        ),
+      );
+    });
+
+    test('a failed fetch leaves the previous cache alone', () async {
+      final MemoryCentresCache cache =
+          MemoryCentresCache(jsonEncode(_body));
+      final CentresRepository repository = repositoryWith(
+        handler: (http.Request request) => throw http.ClientException('down'),
+        cache: cache,
+      );
+
+      await expectLater(
+        repository.fetchRemote('token'),
+        throwsA(isA<MembershipOffline>()),
+      );
+      expect(cache.value, isNotNull);
+
+      final CentresData? cached = await repository.readCache();
+      expect(cached!.centres, hasLength(4));
+      expect(cached.fromCache, isTrue);
+    });
+  });
+
+  group('cache', () {
+    test('nothing cached reads as null', () async {
+      final CentresRepository repository =
+          repositoryWith(handler: (http.Request request) => fail('no call'));
+
+      expect(await repository.readCache(), isNull);
+    });
+
+    test('a corrupt cache reads as null instead of crashing', () async {
+      final CentresRepository repository = repositoryWith(
+        handler: (http.Request request) => fail('no call'),
+        cache: MemoryCentresCache('} not json {'),
+      );
+
+      expect(await repository.readCache(), isNull);
+    });
+
+    test('clearing removes the cached list', () async {
+      final MemoryCentresCache cache = MemoryCentresCache(jsonEncode(_body));
+      final CentresRepository repository = repositoryWith(
+        handler: (http.Request request) => fail('no call'),
+        cache: cache,
+      );
+
+      await repository.clearCache();
+
+      expect(cache.value, isNull);
+      expect(await repository.readCache(), isNull);
     });
   });
 
   group('grouping', () {
     test('groups by region and counts', () {
-      final List<RegionGroup> groups =
-          CentresRepository.groupByRegion(repository.parse(_sampleJson));
+      final List<RegionGroup> groups = CentresRepository.groupByRegion(
+        CentresRepository.parseRemote(_body).centres,
+      );
+
       expect(groups, hasLength(3));
       expect(groups.first.region, 'Free State');
       expect(groups.first.count, 1);
@@ -143,32 +295,17 @@ void main() {
   });
 
   group('Centre.matches', () {
-    final List<Centre> centres = repository.parse(_sampleJson);
+    final List<Centre> centres = CentresRepository.parseRemote(_body).centres;
+    Centre ebhubesini() =>
+        centres.firstWhere((Centre c) => c.name == 'eBhubesini');
 
     test('matches the name, case-insensitively', () {
-      expect(centres.firstWhere((Centre c) => c.name == 'eBhubesini')
-          .matches('BHUBE'), isTrue);
+      expect(ebhubesini().matches('BHUBE'), isTrue);
     });
 
-    test('matches the town and the address', () {
-      expect(
-          centres
-              .firstWhere((Centre c) => c.name == 'eBhubesini')
-              .matches('marshalltown'),
-          isTrue);
-      expect(
-          centres
-              .firstWhere((Centre c) => c.name == 'eBhubesini')
-              .matches('small street'),
-          isTrue);
-    });
-
-    test('matches the region', () {
-      expect(
-          centres
-              .firstWhere((Centre c) => c.name == 'eBhubesini')
-              .matches('gauteng'),
-          isTrue);
+    test('matches the address and the region', () {
+      expect(ebhubesini().matches('small street'), isTrue);
+      expect(ebhubesini().matches('gauteng'), isTrue);
     });
 
     test('an empty query matches everything', () {
@@ -178,26 +315,22 @@ void main() {
     });
 
     test('a miss returns false', () {
-      expect(
-          centres
-              .firstWhere((Centre c) => c.name == 'eBhubesini')
-              .matches('Cape Town'),
-          isFalse);
+      expect(ebhubesini().matches('Cape Town'), isFalse);
     });
   });
 
   group('Centre json round trip', () {
     test('toJson keeps the fields the UI needs', () {
-      final Centre centre = repository
-          .parse(_sampleJson)
+      final Centre centre = CentresRepository.parseRemote(_body)
+          .centres
           .firstWhere((Centre c) => c.id == 'kzn-durban');
       final Map<String, dynamic> json = centre.toJson();
+
       expect(json['id'], 'kzn-durban');
       expect(json['name'], 'Durban');
       expect(json['region'], 'KwaZulu-Natal');
       expect(json['lat'], -29.8579);
       expect(json['lng'], 31.0292);
-      expect(json['verified'], isTrue);
     });
   });
 }

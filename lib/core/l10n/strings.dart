@@ -889,53 +889,313 @@ abstract final class S {
 
   // ---------------------------------------------------------- membership
 
+  static const Bi membershipTitle =
+      Bi('Membership', 'Ubulungu', key: 'membership');
   static const Bi account = Bi('Account', 'I-akhawunti', key: 'account');
+  static const Bi logOut = Bi('Log out', 'Phuma', key: 'pay_signout');
+
+  // ------------------------------------------------- log in / create account
+
   static const Bi authTitle =
       Bi('Sign in to continue', 'Ngena ukuze uqhubeke', key: 'auth_title');
+  static const Bi authLogIn = Bi('Log in', 'Ngena', key: 'auth_verify');
+  static const Bi authCreate = Bi(
+    'Create account',
+    'Vula i-akhawunti',
+    key: 'auth_create',
+  );
+  static const Bi authCreateIntro = Bi(
+    'Create an account to start your free trial.',
+    'Vula i-akhawunti ukuze uqale ukuzama mahhala.',
+    key: 'auth_create_intro',
+  );
   static const Bi authEmail = Bi(
     'Your e-mail address',
     'Ikheli lakho le-imeyili',
     key: 'auth_email',
   );
-  static const Bi authSend = Bi('Send code', 'Thumela ikhodi', key: 'auth_send');
-  static const Bi authCheck =
-      Bi('Check your e-mail', 'Bheka i-imeyili yakho', key: 'auth_check');
-  static Bi authCode(String email) => Bi(
-        'Enter the code sent to $email',
-        'Faka ikhodi ethunyelwe ku-$email',
-        key: 'auth_code',
+  static const Bi authPassword =
+      Bi('Password', 'Iphasiwedi', key: 'auth_password');
+  static const Bi authShowPassword = Bi(
+    'Show password',
+    'Bonisa iphasiwedi',
+    key: 'auth_pw_show',
+  );
+  static const Bi authHidePassword = Bi(
+    'Hide password',
+    'Fihla iphasiwedi',
+    key: 'auth_pw_hide',
+  );
+  static const Bi authForgot = Bi(
+    'Forgot password?',
+    'Ukhohlwe iphasiwedi?',
+    key: 'auth_forgot',
+  );
+
+  /// Shown after the recovery mail was accepted. Deliberately neutral: the
+  /// server never says whether an address has an account.
+  static Bi authForgotSent(String email) => Bi(
+        'If $email has an account, a reset link is on its way. Open it on '
+            'this phone to set a new password.',
+        'Uma u-$email ene-akhawunti, isixhumanisi sokusetha kabusha siyeza. '
+            'Sivule kule foni ukuze ubeke iphasiwedi entsha.',
+        key: 'auth_forgot_sent',
         args: <String, Object>{'e': email},
       );
-  static const Bi authCodeLabel =
-      Bi('6-digit code', 'Ikhodi yezinombolo ezi-6', key: 'auth_code_l');
-  static const Bi authVerify = Bi('Sign in', 'Ngena', key: 'auth_verify');
-  static const Bi authChange = Bi(
-    'Use another e-mail',
-    'Sebenzisa enye i-imeyili',
-    key: 'auth_change',
-  );
   static const Bi authBadEmail = Bi(
     'Please enter a valid e-mail address.',
     'Sicela ufake ikheli le-imeyili elifanele.',
     key: 'auth_bad_email',
   );
-  static const Bi authSendFail = Bi(
-    'The code could not be sent. Please try again.',
-    'Asikwazanga ukuthumela ikhodi. Sicela uzame futhi.',
-    key: 'auth_send_fail',
+  static const Bi authNoPassword = Bi(
+    'Enter your password.',
+    'Faka iphasiwedi yakho.',
+    key: 'auth_no_password',
   );
-  static const Bi authBadCode = Bi(
-    'Enter the code from the e-mail.',
-    'Faka ikhodi esuka ku-imeyili.',
-    key: 'auth_bad_code',
+  static const Bi authShortPassword = Bi(
+    'Use at least 8 characters.',
+    'Sebenzisa okungenani izinhlamvu ezingu-8.',
+    key: 'auth_short_pw',
   );
-  static const Bi authWrongCode = Bi(
-    'That code did not work. Check it or request a new one.',
-    'Leyo khodi ayisebenzanga. Yihlole noma ucele entsha.',
-    key: 'auth_wrong_code',
+  static const Bi authInvalid = Bi(
+    'That e-mail and password do not match. Please try again.',
+    'Leyo imeyili nephasiwedi azihambisani. Sicela uzame futhi.',
+    key: 'auth_invalid',
   );
-  static const Bi signOut = Bi('Sign out', 'Phuma', key: 'pay_signout');
+  static const Bi authNotConfirmed = Bi(
+    'Confirm your e-mail address first. Open the link we sent you.',
+    'Qinisekisa ikheli lakho le-imeyili kuqala. Vula isixhumanisi esikuthumele '
+        'sona.',
+    key: 'auth_not_confirmed',
+  );
+  static const Bi authAlready = Bi(
+    'That address already has an account. Log in instead.',
+    'Lelo kheli selinayo i-akhawunti. Ngena kunalokho.',
+    key: 'auth_already',
+  );
+  static const Bi authWeak = Bi(
+    'That password is too weak. Use a longer one.',
+    'Leyo phasiwedi ibuthakathaka. Sebenzisa ende kakhulu.',
+    key: 'auth_weak',
+  );
+  static const Bi authRateLimited = Bi(
+    'Too many attempts. Please wait a few minutes and try again.',
+    'Imizamo eminingi kakhulu. Sicela ulinde imizuzu embalwa uzame futhi.',
+    key: 'auth_rate',
+  );
+  static const Bi authFailed = Bi(
+    'That did not work. Please try again.',
+    'Lokho akusebenzanga. Sicela uzame futhi.',
+    key: 'auth_failed',
+  );
 
+  // ----------------------------------------------- awaiting e-mail confirm
+
+  static const Bi authCheck =
+      Bi('Check your e-mail', 'Bheka i-imeyili yakho', key: 'auth_check');
+  static Bi confirmBody(String email) => Bi(
+        'We have sent a confirmation link to $email. Open it, then come back '
+            'and log in.',
+        'Sithumele isixhumanisi sokuqinisekisa ku-$email. Sivule, bese ubuya '
+            'ungene.',
+        key: 'confirm_body',
+        args: <String, Object>{'e': email},
+      );
+  static const Bi confirmResend = Bi(
+    'Send the e-mail again',
+    'Thumela i-imeyili futhi',
+    key: 'confirm_resend',
+  );
+  static const Bi confirmResent = Bi(
+    'Sent. Look in your inbox and in your spam folder.',
+    'Kuthunyelwe. Bheka kwi-inbox nakwi-spam yakho.',
+    key: 'confirm_resent',
+  );
+  static const Bi confirmDone = Bi(
+    "I've confirmed, log in",
+    'Sengiqinisekisile, ngingena',
+    key: 'confirm_done',
+  );
+
+  // ------------------------------------------------------- password change
+
+  static const Bi pwTitle = Bi(
+    'Set your own password',
+    'Beka eyakho iphasiwedi',
+    key: 'pw_title',
+  );
+  static const Bi pwBody = Bi(
+    'An administrator gave you a temporary password. Choose your own before '
+        'you carry on.',
+    'Umphathi ukunike iphasiwedi yesikhashana. Khetha eyakho ngaphambi kokuba '
+        'uqhubeke.',
+    key: 'pw_body',
+  );
+  static const Bi pwNew =
+      Bi('New password', 'Iphasiwedi entsha', key: 'pw_new');
+  static const Bi pwConfirm = Bi(
+    'Confirm new password',
+    'Qinisekisa iphasiwedi entsha',
+    key: 'pw_confirm',
+  );
+  static const Bi pwMismatch = Bi(
+    'The two passwords do not match.',
+    'Amaphasiwedi amabili awafani.',
+    key: 'pw_mismatch',
+  );
+  static const Bi pwSave =
+      Bi('Save password', 'Gcina iphasiwedi', key: 'pw_save');
+  static const Bi pwChanged = Bi(
+    'Your password has been changed.',
+    'Iphasiwedi yakho ishintshiwe.',
+    key: 'pw_changed',
+  );
+  static const Bi pwFailed = Bi(
+    'The password could not be changed. Please try again.',
+    'Iphasiwedi ayikwazanga ukushintshwa. Sicela uzame futhi.',
+    key: 'pw_failed',
+  );
+  static const Bi pwChange =
+      Bi('Change password', 'Shintsha iphasiwedi', key: 'pw_change');
+  static const Bi pwOffline = Bi(
+    'You must be online to set a new password.',
+    'Kumele uxhume ku-inthanethi ukuze ubeke iphasiwedi entsha.',
+    key: 'pw_offline',
+  );
+
+  // ------------------------------------------------------------ trial page
+
+  static Bi trialTitle(int days) => Bi(
+        'Your $days-day free trial has started',
+        'Isikhathi sakho sezinsuku ezingu-$days sokuzama mahhala siqalile',
+        key: 'trial_title',
+        args: <String, Object>{'n': '$days'},
+      );
+  static const Bi trialWhat = Bi(
+    'Everything is included',
+    'Konke kufakiwe',
+    key: 'trial_what',
+  );
+  static const Bi featCompass = Bi(
+    'Compass to Ekuphumuleni',
+    'Ikhompasi eya e-Ekuphumuleni',
+    key: 'feat_compass',
+  );
+  static const Bi featMsamo = Bi(
+    'Msamo positioning',
+    'Ukubekwa komsamo',
+    key: 'feat_msamo',
+  );
+  static const Bi featSun = Bi(
+    'Sun and shadow guidance',
+    'Isiqondiso selanga nesithunzi',
+    key: 'feat_sun',
+  );
+  static const Bi featCentres = Bi(
+    'Centres directory with directions',
+    'Uhlu lwezikhungo nezikhombisi-ndlela',
+    key: 'feat_centres',
+  );
+  static const Bi featLanguages = Bi(
+    'English plus four other languages: isiZulu, Português, Chichewa, '
+        'iciBemba',
+    'IsiNgisi kanye nezinye izilimi ezine: isiZulu, Português, Chichewa, '
+        'iciBemba',
+    key: 'feat_languages',
+  );
+  static const Bi trialStart = Bi(
+    'Start using the app',
+    'Qala ukusebenzisa uhlelo',
+    key: 'trial_start',
+  );
+  static const Bi payNow = Bi('Pay now', 'Khokha manje', key: 'pay_now');
+  static Bi trialLeft(int days) => Bi(
+        'Free trial: $days days left',
+        'Isikhathi sokuzama mahhala: kusele izinsuku ezingu-$days',
+        key: 'trial_left',
+        args: <String, Object>{'n': '$days'},
+      );
+  static Bi trialOffer(int days, String price) => Bi(
+        'Free for $days days, then $price per month.',
+        'Mahhala izinsuku ezingu-$days, bese kuba ngu-$price ngenyanga.',
+        key: 'trial_offer',
+        args: <String, Object>{'n': '$days', 'p': price},
+      );
+  static const Bi trialEnded = Bi(
+    'Your free trial has ended',
+    'Isikhathi sakho sokuzama mahhala siphelile',
+    key: 'trial_ended',
+  );
+
+  // --------------------------------------------------------------- paywall
+
+  static const Bi paywallTitle = Bi(
+    'A membership is needed to carry on',
+    'Kudingeka ubulungu ukuze uqhubeke',
+    key: 'paywall_title',
+  );
+  static const Bi payGraceNote = Bi(
+    'After a missed payment there are three days of grace; after that the '
+        'app waits for PayFast to confirm.',
+    'Uma inkokhelo iphuthile kunezinsuku ezintathu zomusa; emva kwalokho '
+        'uhlelo lulinda i-PayFast ukuba iqinisekise.',
+    key: 'pay_grace',
+  );
+  static Bi payOffer(String price) => Bi(
+        'Continue with a monthly membership of $price. Cancel any time.',
+        'Qhubeka ngobulungu banyanga zonke obungu-$price. Ungakhansela noma nini.',
+        key: 'pay_offer',
+        args: <String, Object>{'p': price},
+      );
+  static Bi payButton(String price) => Bi(
+        'Subscribe · $price per month',
+        'Bhalisa · $price ngenyanga',
+        key: 'pay_btn',
+        args: <String, Object>{'p': price},
+      );
+  static const Bi payStore = Bi(
+    'A membership is required. Please sign in with a member account.',
+    'Kudingeka ubulungu. Sicela ungene nge-akhawunti yelungu.',
+    key: 'pay_store',
+  );
+
+  // --------------------------------------------------------------- offline
+
+  static const Bi offlineTitle =
+      Bi('No connection', 'Akukho ukuxhumana', key: 'offline_title');
+  static const Bi payOffline = Bi(
+    'Connect to the internet to check your membership',
+    'Xhuma ku-inthanethi ukuze sihlole ubulungu bakho',
+    key: 'pay_offline',
+  );
+  static const Bi membershipCachedNote = Bi(
+    'Showing the last confirmed status (offline).',
+    'Kuboniswa isimo sokugcina esiqinisekisiwe (ngaphandle kwe-inthanethi).',
+    key: 'membership_cached',
+  );
+
+  // -------------------------------------------------------- account screen
+
+  static const Bi accountOpen = Bi(
+    'Account and membership',
+    'I-akhawunti nobulungu',
+    key: 'acct_open',
+  );
+  static const Bi accountNote = Bi(
+    'Your e-mail, your membership, your password.',
+    'I-imeyili yakho, ubulungu bakho, iphasiwedi yakho.',
+    key: 'acct_note',
+  );
+  static const Bi accountSignedInAs =
+      Bi('Signed in as', 'Ungene njengo-', key: 'acct_as');
+  static const Bi accountStatusLabel =
+      Bi('Status', 'Isimo', key: 'acct_status');
+  static Bi accountUntil(String date) => Bi(
+        'Access until $date',
+        'Ukufinyelela kuze kube ngu-$date',
+        key: 'acct_until',
+        args: <String, Object>{'d': date},
+      );
   static const Bi payChecking = Bi(
     'Checking your membership…',
     'Sihlola ubulungu bakho…',
@@ -951,11 +1211,6 @@ abstract final class S {
     'Lokhu kuvame ukuthatha imizuzwana embalwa.',
     key: 'pay_wait',
   );
-  static const Bi payOffline = Bi(
-    'Connect to the internet to check your membership',
-    'Xhuma ku-inthanethi ukuze sihlole ubulungu bakho',
-    key: 'pay_offline',
-  );
   static const Bi payPastDue = Bi(
     "We have not received this month's payment yet",
     'Asikakutholi ukukhokha kwale nyanga',
@@ -966,34 +1221,19 @@ abstract final class S {
     'Ubulungu bakho buphelile',
     key: 'pay_expired',
   );
-  static const Bi trialEnded = Bi(
-    'Your free trial has ended',
-    'Isikhathi sakho sokuzama mahhala siphelile',
-    key: 'trial_ended',
+  static const Bi payActive = Bi(
+    'Membership active, renews monthly',
+    'Ubulungu busebenza, buvuselelwa njalo ngenyanga',
+    key: 'pay_active',
   );
-  static const Bi payStore = Bi(
-    'A membership is required. Please sign in with a member account.',
-    'Kudingeka ubulungu. Sicela ungene nge-akhawunti yelungu.',
-    key: 'pay_store',
-  );
-  static Bi payOffer(String price) => Bi(
-        'Continue with a monthly membership of $price. Cancel any time.',
-        'Qhubeka ngobulungu banyanga zonke obungu-$price. Ungakhansela noma nini.',
-        key: 'pay_offer',
-        args: <String, Object>{'p': price},
+  static Bi payCancelledUntil(String date) => Bi(
+        'Cancelled. Access until $date',
+        'Kukhanseliwe. Ungasebenzisa kuze kube ngu-$date',
+        key: 'pay_cancelled_until',
+        args: <String, Object>{'d': date},
       );
-  static Bi trialOffer(int days, String price) => Bi(
-        'Free for $days days, then $price per month.',
-        'Mahhala izinsuku ezingu-$days, bese kuba ngu-$price ngenyanga.',
-        key: 'trial_offer',
-        args: <String, Object>{'n': '$days', 'p': price},
-      );
-  static Bi payButton(String price) => Bi(
-        'Subscribe · $price per month',
-        'Bhalisa · $price ngenyanga',
-        key: 'pay_btn',
-        args: <String, Object>{'p': price},
-      );
+  static const Bi payNone =
+      Bi('No active membership', 'Abukho ubulungu obusebenzayo', key: 'pay_none');
   static const Bi payCancel =
       Bi('Cancel subscription', 'Khansela ukubhalisa', key: 'pay_cancel');
   static const Bi payCancelConfirm = Bi(
@@ -1028,30 +1268,153 @@ abstract final class S {
     'Inkokhelo ikhanseliwe. Ungazama futhi.',
     key: 'pay_cancelled_note',
   );
-  static const Bi payActive = Bi(
-    'Membership active, renews monthly',
-    'Ubulungu busebenza, buvuselelwa njalo ngenyanga',
-    key: 'pay_active',
+
+  // ------------------------------------------------------------ admin area
+
+  static const Bi adminOpen = Bi('Admin tools', 'Amathuluzi omphathi', key: 'admin_open');
+  static const Bi adminTitle =
+      Bi('Administration', 'Ukuphatha', key: 'admin_title');
+  static const Bi adminNote = Bi(
+    'Only administrators see this. The server checks it again.',
+    'Abaphathi kuphela ababona lokhu. Iseva iyaphinda ihlole.',
+    key: 'admin_note',
   );
-  static Bi payCancelledUntil(String date) => Bi(
-        'Cancelled. Access until $date',
-        'Kukhanseliwe. Ungasebenzisa kuze kube ngu-$date',
-        key: 'pay_cancelled_until',
-        args: <String, Object>{'d': date},
+  static const Bi adminAddCentre =
+      Bi('Add a centre', 'Engeza isikhungo', key: 'admin_add_centre');
+  static const Bi adminGenPassword = Bi(
+    'Auto-generate password',
+    'Yakha iphasiwedi ngokuzenzakalela',
+    key: 'admin_gen_pw',
+  );
+  static const Bi adminDeleteUser =
+      Bi('Delete a user', 'Susa umsebenzisi', key: 'admin_del_user');
+  static const Bi adminRegion = Bi('Region', 'Isifunda', key: 'admin_region');
+  static const Bi adminCentreName =
+      Bi('Centre name', 'Igama lesikhungo', key: 'admin_name');
+  static const Bi adminAddress = Bi('Address', 'Ikheli', key: 'admin_address');
+  static const Bi adminPhone =
+      Bi('Phone number', 'Inombolo yocingo', key: 'admin_phone');
+  static const Bi adminRequired = Bi('Required', 'Kuyadingeka', key: 'admin_required');
+  static Bi adminCentreAdded(String name) => Bi(
+        '$name has been added.',
+        'U-$name wengeziwe.',
+        key: 'admin_centre_added',
+        args: <String, Object>{'n': name},
       );
-  static const Bi payNone =
-      Bi('No active membership', 'Abukho ubulungu obusebenzayo', key: 'pay_none');
-  static Bi trialLeft(int days) => Bi(
-        'Free trial: $days days left',
-        'Isikhathi sokuzama mahhala: kusele izinsuku ezingu-$days',
-        key: 'trial_left',
-        args: <String, Object>{'n': '$days'},
+  static const Bi adminDuplicateCentre = Bi(
+    'A centre with that name already exists in that region.',
+    'Kukhona kakade isikhungo esinaleli gama kuleso sifunda.',
+    key: 'admin_dup_centre',
+  );
+  static const Bi adminInvalidCentre = Bi(
+    'Please check the fields marked below.',
+    'Sicela uhlole izinkambu ezimakiwe ngezansi.',
+    key: 'admin_bad_centre',
+  );
+  static const Bi adminSearchUser = Bi(
+    'Search by e-mail',
+    'Sesha ngemeyili',
+    key: 'admin_search_user',
+  );
+  static const Bi adminSearch = Bi('Search', 'Sesha', key: 'admin_search');
+  static const Bi adminNoUsers = Bi(
+    'No user matches that search.',
+    'Akekho umsebenzisi otholakalayo.',
+    key: 'admin_no_users',
+  );
+  static Bi adminSelected(String email) => Bi(
+        'Selected: $email',
+        'Okukhethiwe: $email',
+        key: 'admin_selected',
+        args: <String, Object>{'e': email},
       );
-  static const Bi membershipTitle =
-      Bi('Membership', 'Ubulungu', key: 'membership');
-  static const Bi membershipCachedNote = Bi(
-    'Showing the last confirmed status (offline).',
-    'Kuboniswa isimo sokugcina esiqinisekisiwe (ngaphandle kwe-inthanethi).',
-    key: 'membership_cached',
+  static Bi adminGenConfirm(String email) => Bi(
+        'Generate a new temporary password for $email? Their current password '
+            'stops working at once.',
+        'Yakha iphasiwedi entsha yesikhashana ka-$email? Iphasiwedi yakhe '
+            'yamanje iyeka ukusebenza ngaso leso sikhathi.',
+        key: 'admin_gen_confirm',
+        args: <String, Object>{'e': email},
+      );
+  static const Bi adminGenerate = Bi(
+    'Generate password',
+    'Yakha iphasiwedi',
+    key: 'admin_generate',
+  );
+  static const Bi adminTempTitle = Bi(
+    'Temporary password',
+    'Iphasiwedi yesikhashana',
+    key: 'admin_temp_title',
+  );
+  static const Bi adminTempWarning = Bi(
+    'Shown once. Pass it on securely.',
+    'Iboniswa kanye. Yidlulise ngokuphepha.',
+    key: 'admin_temp_warn',
+  );
+  static const Bi adminCopy = Bi('Copy', 'Kopisha', key: 'admin_copy');
+  static const Bi adminCopied = Bi('Copied', 'Kukopishiwe', key: 'admin_copied');
+  static Bi adminDeleteConfirm(String email) => Bi(
+        'Type $email to confirm the deletion.',
+        'Thayipha u-$email ukuze uqinisekise ukususa.',
+        key: 'admin_del_confirm',
+        args: <String, Object>{'e': email},
+      );
+  static const Bi adminDeleteMismatch = Bi(
+    'The e-mail does not match.',
+    'I-imeyili ayifani.',
+    key: 'admin_del_mismatch',
+  );
+  static const Bi adminDelete =
+      Bi('Delete user', 'Susa umsebenzisi', key: 'admin_delete');
+  static Bi adminDeleted(String email) => Bi(
+        '$email has been deleted.',
+        'U-$email ususiwe.',
+        key: 'admin_deleted',
+        args: <String, Object>{'e': email},
+      );
+  static const Bi adminDeletedCancelled = Bi(
+    'Their subscription was cancelled as well.',
+    'Ukubhalisa kwakhe nakho kukhanseliwe.',
+    key: 'admin_del_cancelled',
+  );
+  static const Bi adminDeletedNoSub = Bi(
+    'They had no active subscription.',
+    'Ubengenakho ukubhalisa okusebenzayo.',
+    key: 'admin_del_nosub',
+  );
+  static const Bi adminCannotDeleteSelf = Bi(
+    'You cannot delete your own account.',
+    'Awukwazi ukususa i-akhawunti yakho.',
+    key: 'admin_del_self',
+  );
+  static const Bi adminPayfastFailed = Bi(
+    'PayFast could not cancel the subscription, so nothing was deleted. '
+        'Please try again later.',
+    'I-PayFast ayikwazanga ukukhansela ukubhalisa, ngakho akukho okususiwe. '
+        'Sicela uzame emuva kwesikhathi.',
+    key: 'admin_payfast_fail',
+  );
+  static const Bi adminForbidden = Bi(
+    'This account is not an administrator.',
+    'Le akhawunti akusiyo eyomphathi.',
+    key: 'admin_forbidden',
+  );
+  static const Bi adminFailed = Bi(
+    'That did not work. Please try again.',
+    'Lokho akusebenzanga. Sicela uzame futhi.',
+    key: 'admin_failed',
+  );
+
+  // --------------------------------------------------------- centres state
+
+  static const Bi centresOffline = Bi(
+    'Showing the saved list: the centres could not be downloaded.',
+    'Kuboniswa uhlu olugciniwe: izikhungo azikwazanga ukulandwa.',
+    key: 'centres_offline',
+  );
+  static const Bi centresEmpty = Bi(
+    'The centres will appear once the phone is online.',
+    'Izikhungo zizovela uma ifoni ixhunywe ku-inthanethi.',
+    key: 'centres_empty',
   );
 }

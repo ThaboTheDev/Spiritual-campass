@@ -1,23 +1,32 @@
 import 'dart:developer' as developer;
 
 /// A Supabase session as stored locally (see membership-api-contract.md).
+///
+/// Never logged and never written anywhere but the platform keystore /
+/// keychain (see `session_store.dart`).
 class AuthSession {
   const AuthSession({
     required this.accessToken,
     required this.refreshToken,
     required this.expiresAt,
     required this.email,
+    this.userId = '',
   });
 
-  factory AuthSession.fromVerifyResponse(
+  /// Parses the body of `POST /auth/v1/token` (password or refresh grant).
+  factory AuthSession.fromTokenResponse(
     Map<String, dynamic> json, {
     required String fallbackEmail,
+    String fallbackUserId = '',
     DateTime? now,
   }) {
     final Object? user = json['user'];
     final String email = (user is Map<String, dynamic> && user['email'] is String)
         ? user['email'] as String
         : fallbackEmail;
+    final String userId = (user is Map<String, dynamic> && user['id'] is String)
+        ? user['id'] as String
+        : fallbackUserId;
     final int expiresIn = _asInt(json['expires_in']) ?? 3600;
     final DateTime at = (now ?? DateTime.now()).toUtc();
     return AuthSession(
@@ -25,6 +34,7 @@ class AuthSession {
       refreshToken: json['refresh_token'] as String? ?? '',
       expiresAt: at.add(Duration(seconds: expiresIn)),
       email: email,
+      userId: userId,
     );
   }
 
@@ -36,6 +46,7 @@ class AuthSession {
           isUtc: true,
         ),
         email: json['email'] as String? ?? '',
+        userId: json['user_id'] as String? ?? '',
       );
 
   final String accessToken;
@@ -44,6 +55,10 @@ class AuthSession {
   /// `now + expires_in * 1000`, stored as epoch milliseconds.
   final DateTime expiresAt;
   final String email;
+
+  /// Supabase user id. Used only as the key of the per-account
+  /// "trial page already seen" flag.
+  final String userId;
 
   bool get isValid => accessToken.isNotEmpty && refreshToken.isNotEmpty;
 
@@ -56,7 +71,47 @@ class AuthSession {
         'refresh_token': refreshToken,
         'expires_at': expiresAt.millisecondsSinceEpoch,
         'email': email,
+        'user_id': userId,
       };
+
+  /// Never print the tokens.
+  @override
+  String toString() => 'AuthSession($email)';
+}
+
+/// The outcome of `POST /auth/v1/signup`.
+///
+/// With e-mail confirmation ON Supabase answers 200 with a user but **no**
+/// session: [session] is then `null` and [needsConfirmation] is `true`.
+class SignUpResult {
+  const SignUpResult({required this.email, this.session});
+
+  factory SignUpResult.fromJson(
+    Map<String, dynamic> json, {
+    required String email,
+    DateTime? now,
+  }) {
+    final String? token = json['access_token'] as String?;
+    if (token == null || token.isEmpty) {
+      return SignUpResult(email: email);
+    }
+    return SignUpResult(
+      email: email,
+      session: AuthSession.fromTokenResponse(
+        json,
+        fallbackEmail: email,
+        now: now,
+      ),
+    );
+  }
+
+  final String email;
+
+  /// The session, when the project has e-mail confirmation switched off.
+  final AuthSession? session;
+
+  /// Whether the member must open the confirmation link before logging in.
+  bool get needsConfirmation => session == null;
 }
 
 /// Entitlement states the server may report. Unknown values map to [other]
@@ -76,6 +131,8 @@ class Entitlement {
     required this.trialDays,
     required this.endsAt,
     required this.fetchedAt,
+    this.isAdmin = false,
+    this.mustChangePassword = false,
     this.rawState,
   });
 
@@ -109,6 +166,10 @@ class Entitlement {
       rawState: rawState,
       access: access,
       canCancel: json['can_cancel'] == true,
+      // Both flags are read defensively: anything that is not literally
+      // `true` counts as `false`, and a missing field is simply `false`.
+      isAdmin: json['is_admin'] == true,
+      mustChangePassword: json['must_change_password'] == true,
       priceMinor: _asNum(json['price']),
       currency: json['currency']?.toString() ?? 'ZAR',
       trialDays: _asInt(json['trial_days']) ?? 7,
@@ -140,7 +201,7 @@ class Entitlement {
     'email', 'status', 'state', 'access', 'can_cancel', 'price', 'currency',
     'trial_days', 'ends_at', 'paid_through', 'access_until',
     'current_period_end', 'trial_ends_at', 'grace_until', 'expires_at',
-    'cancelled_at', 'ok',
+    'cancelled_at', 'ok', 'is_admin', 'must_change_password',
   };
 
   final String email;
@@ -149,6 +210,15 @@ class Entitlement {
   final String? rawState;
   final bool access;
   final bool canCancel;
+
+  /// Whether this account may open the admin area. The server enforces it as
+  /// well (`403 admin_required`); this only hides the entry.
+  final bool isAdmin;
+
+  /// Set by the server after an administrator used "Auto-generate password".
+  /// While it is `true` every other `/api/*` call answers
+  /// `403 {"error":"password_change_required"}`.
+  final bool mustChangePassword;
 
   /// Price as sent by the server (usually rands, e.g. 100).
   final num? priceMinor;
@@ -180,8 +250,8 @@ class Entitlement {
   }
 
   /// Whether a *cached* copy may still grant access: only until the paid-
-  /// through date the server last confirmed. Without an end date the cache
-  /// is trusted for at most 24 h.
+  /// through date (or, during a trial, the trial end date) the server last
+  /// confirmed. Without an end date the cache is trusted for at most 24 h.
   bool cachedAccessValid({DateTime? now}) {
     if (!access) {
       return false;
@@ -199,6 +269,76 @@ class Entitlement {
         'me': original,
         'fetched_at': fetchedAt.millisecondsSinceEpoch,
       };
+}
+
+/// One row of `GET /api/admin/users`.
+class AdminUser {
+  const AdminUser({
+    required this.userId,
+    required this.email,
+    required this.status,
+    required this.state,
+    this.createdAt,
+  });
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
+        userId: json['user_id']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        status: json['status']?.toString() ?? '',
+        state: json['state']?.toString() ?? '',
+        createdAt: _parseDate(json['created_at']),
+      );
+
+  final String userId;
+  final String email;
+  final String status;
+  final String state;
+  final DateTime? createdAt;
+
+  /// "trial" / "active" / … as one short line for the list.
+  String get stateLabel => state.isNotEmpty ? state : status;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AdminUser && other.userId == userId && other.email == email;
+
+  @override
+  int get hashCode => Object.hash(userId, email);
+}
+
+/// `POST /api/admin/users/reset-password` → the generated password.
+///
+/// Deliberately *not* persisted anywhere: it lives in widget state for as
+/// long as the dialog is open and is never logged.
+class TemporaryPassword {
+  const TemporaryPassword({required this.email, required this.password});
+
+  factory TemporaryPassword.fromJson(Map<String, dynamic> json) =>
+      TemporaryPassword(
+        email: json['email']?.toString() ?? '',
+        password: json['temporary_password']?.toString() ?? '',
+      );
+
+  final String email;
+  final String password;
+
+  /// Never print the password.
+  @override
+  String toString() => 'TemporaryPassword($email)';
+}
+
+/// `POST /api/admin/users/delete` → whether PayFast was also cancelled.
+class DeleteUserResult {
+  const DeleteUserResult({required this.ok, required this.subscriptionCancelled});
+
+  factory DeleteUserResult.fromJson(Map<String, dynamic> json) =>
+      DeleteUserResult(
+        ok: json['ok'] == true,
+        subscriptionCancelled: json['subscription_cancelled'] == true,
+      );
+
+  final bool ok;
+  final bool subscriptionCancelled;
 }
 
 /// A signed PayFast form: open [actionUrl] with [fields] in the external
@@ -261,21 +401,25 @@ num? _asNum(Object? value) {
   return null;
 }
 
+DateTime? _parseDate(Object? value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value)?.toUtc();
+  }
+  if (value is num) {
+    final int v = value.toInt();
+    return DateTime.fromMillisecondsSinceEpoch(
+      v > 100000000000 ? v : v * 1000,
+      isUtc: true,
+    );
+  }
+  return null;
+}
+
 DateTime? _firstDate(Map<String, dynamic> json, List<String> keys) {
   for (final String key in keys) {
-    final Object? value = json[key];
-    if (value is String && value.isNotEmpty) {
-      final DateTime? parsed = DateTime.tryParse(value);
-      if (parsed != null) {
-        return parsed.toUtc();
-      }
-    } else if (value is num) {
-      // Epoch seconds or milliseconds.
-      final int v = value.toInt();
-      return DateTime.fromMillisecondsSinceEpoch(
-        v > 100000000000 ? v : v * 1000,
-        isUtc: true,
-      );
+    final DateTime? parsed = _parseDate(json[key]);
+    if (parsed != null) {
+      return parsed;
     }
   }
   return null;
