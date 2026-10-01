@@ -12,8 +12,8 @@ import '../../../widgets/language_scope.dart';
 /// The large circular compass dial.
 ///
 /// A fixed gold marker sits at the top; the rose rotates with the phone's true
-/// heading and the needle points at Ekuphumuleni. When the needle is within
-/// ±3° of the marker the ring turns gold and a light haptic is fired once.
+/// heading and the needle points at Ekuphumuleni in the same north frame.
+/// Gold/haptics require the shared uncertainty policy, not just a ±3° arrow.
 class CompassDial extends StatefulWidget {
   const CompassDial({
     super.key,
@@ -23,6 +23,7 @@ class CompassDial extends StatefulWidget {
     this.aligned = false,
     this.active = true,
     this.simple = false,
+    this.travelDirection = false,
   });
 
   /// True heading of the device in degrees, or `null` when the sensor has not
@@ -43,6 +44,7 @@ class CompassDial extends StatefulWidget {
 
   /// Low performance profile: no gradient face, no halo, flat colours.
   final bool simple;
+  final bool travelDirection;
 
   /// How close to the marker counts as "facing Ekuphumuleni".
   static const double alignmentToleranceDeg = 3.0;
@@ -57,7 +59,14 @@ class _CompassDialState extends State<CompassDial> {
   @override
   void didUpdateWidget(CompassDial oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final bool aligned = widget.aligned && widget.active;
+    final bool aligned =
+        widget.aligned &&
+        widget.active &&
+        !widget.travelDirection &&
+        widget.headingDeg != null &&
+        widget.headingDeg!.isFinite &&
+        widget.targetBearingDeg != null &&
+        widget.targetBearingDeg!.isFinite;
     if (aligned && !_wasAligned) {
       // One light tap as the needle reaches the marker.
       HapticFeedback.lightImpact();
@@ -69,10 +78,20 @@ class _CompassDialState extends State<CompassDial> {
   Widget build(BuildContext context) {
     LanguageScope.watch(context);
     final double size = widget.size;
-    final double heading = widget.headingDeg ?? 0.0;
-    final double bearing = widget.targetBearingDeg ?? 0.0;
-    final bool hasSensorValue = widget.headingDeg != null;
-    final bool aligned = widget.aligned && widget.active;
+    final bool hasSensorValue =
+        widget.headingDeg != null && widget.headingDeg!.isFinite;
+    final bool hasTarget =
+        widget.targetBearingDeg != null && widget.targetBearingDeg!.isFinite;
+    final double heading = hasSensorValue ? widget.headingDeg! : 0;
+    final double bearing = hasTarget ? widget.targetBearingDeg! : 0;
+    final bool aligned =
+        widget.aligned &&
+        widget.active &&
+        !widget.travelDirection &&
+        widget.headingDeg != null &&
+        widget.headingDeg!.isFinite &&
+        widget.targetBearingDeg != null &&
+        widget.targetBearingDeg!.isFinite;
 
     final Color ringColor = aligned
         ? AppColors.gold
@@ -83,92 +102,99 @@ class _CompassDialState extends State<CompassDial> {
     final double needleRad = Angles.toRadians(bearing - heading);
 
     return Semantics(
-      label: '${S.dialLabel(widget.targetBearingDeg?.round() ?? 0).text} '
-          '${aligned ? '${S.aligned.text}.' : S.dialTurnHint.text}',
+      label: widget.travelDirection
+          ? S.travelDirectionNotice.text
+          : !hasSensorValue
+          ? S.directionUnreliable.text
+          : !hasTarget
+          ? '${S.phoneHeadingMode.text} ${Formatters.bearing(heading)}. ${S.targetDirectionUnavailable.text}'
+          : '${S.dialLabel(widget.targetBearingDeg?.round() ?? 0).text} '
+                '${aligned ? '${S.aligned.text}.' : S.dialTurnHint.text}',
       child: RepaintBoundary(
         child: SizedBox(
-        width: size,
-        height: size,
-        child: Opacity(
-          opacity: widget.active ? 1.0 : 0.45,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              // Ring, ticks and cardinal letters.
-              CustomPaint(
-                size: Size(size, size),
-                painter: _DialPainter(
-                  headingRad: headingRad,
-                  ringColor: ringColor,
-                  aligned: aligned,
-                  simple: widget.simple,
+          width: size,
+          height: size,
+          child: Opacity(
+            opacity: widget.active ? 1.0 : 0.45,
+            child: Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                // Ring, ticks and cardinal letters.
+                CustomPaint(
+                  size: Size(size, size),
+                  painter: _DialPainter(
+                    headingRad: headingRad,
+                    ringColor: ringColor,
+                    aligned: aligned,
+                    simple: widget.simple,
+                  ),
                 ),
-              ),
-              Transform.rotate(
-                angle: -headingRad,
-                child: SizedBox(
-                  width: size,
-                  height: size,
-                  child: Stack(
-                    children: <Widget>[
-                      for (final _CardinalLabel label in _cardinals)
-                        Align(
-                          alignment: label.alignment,
-                          child: Padding(
-                            padding: label.padding,
-                            child: Text(
-                              Formatters.cardinal(
-                                label.bearingDeg,
-                                sixteenPoint: false,
-                              ),
-                              style: TextStyle(
-                                fontSize: label.isNorth ? 15 : 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: label.isNorth
-                                    ? AppColors.gold
-                                    : AppColors.textSecondary,
+                Transform.rotate(
+                  angle: -headingRad,
+                  child: SizedBox(
+                    width: size,
+                    height: size,
+                    child: Stack(
+                      children: <Widget>[
+                        for (final _CardinalLabel label in _cardinals)
+                          Align(
+                            alignment: label.alignment,
+                            child: Padding(
+                              padding: label.padding,
+                              child: Text(
+                                Formatters.cardinal(
+                                  label.bearingDeg,
+                                  sixteenPoint: false,
+                                ),
+                                style: TextStyle(
+                                  fontSize: label.isNorth ? 15 : 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: label.isNorth
+                                      ? AppColors.gold
+                                      : AppColors.textSecondary,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              // The needle pointing at Ekuphumuleni.
-              if (widget.targetBearingDeg != null)
-                Transform.rotate(
-                  angle: needleRad,
-                  child: CustomPaint(
-                    size: Size(size, size),
-                    painter: _NeedlePainter(
-                      color: needleColor,
-                      dimmed: !hasSensorValue,
+                      ],
                     ),
                   ),
                 ),
-              // Fixed marker at the top.
-              CustomPaint(
-                size: Size(size, size),
-                painter: _MarkerPainter(
-                  color: ringColor,
-                  aligned: aligned,
-                  simple: widget.simple,
+                // The needle pointing at Ekuphumuleni.
+                if (hasTarget && hasSensorValue)
+                  Transform.rotate(
+                    angle: needleRad,
+                    child: CustomPaint(
+                      key: const ValueKey<String>('compass-target-needle'),
+                      size: Size(size, size),
+                      painter: _NeedlePainter(
+                        color: needleColor,
+                        dimmed: !hasSensorValue,
+                      ),
+                    ),
+                  ),
+                // Fixed marker at the top.
+                CustomPaint(
+                  size: Size(size, size),
+                  painter: _MarkerPainter(
+                    color: ringColor,
+                    aligned: aligned,
+                    simple: widget.simple,
+                  ),
                 ),
-              ),
-              // Centre hub.
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.background,
-                  border: Border.all(color: ringColor, width: 2),
+                // Centre hub.
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.background,
+                    border: Border.all(color: ringColor, width: 2),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
@@ -201,6 +227,7 @@ class _DialPainter extends CustomPainter {
     required this.ringColor,
     required this.aligned,
     this.simple = false,
+    this.travelDirection = false,
   });
 
   final double headingRad;
@@ -226,8 +253,10 @@ class _DialPainter extends CustomPainter {
         final double a = Angles.toRadians(degrees.toDouble());
         final double sa = math.sin(a), ca = math.cos(a);
         final Offset from = Offset(sa * tickOuter, -ca * tickOuter);
-        final Offset to =
-            Offset(sa * (tickOuter - length), -ca * (tickOuter - length));
+        final Offset to = Offset(
+          sa * (tickOuter - length),
+          -ca * (tickOuter - length),
+        );
         final Path target = isCardinal ? cardinal : (isMajor ? major : minor);
         target
           ..moveTo(from.dx, from.dy)
@@ -251,10 +280,7 @@ class _DialPainter extends CustomPainter {
         radius - 2,
         Paint()
           ..shader = const RadialGradient(
-            colors: <Color>[
-              AppColors.surfaceAlt,
-              AppColors.surface,
-            ],
+            colors: <Color>[AppColors.surfaceAlt, AppColors.surface],
           ).createShader(Rect.fromCircle(center: centre, radius: radius)),
       );
     }
@@ -368,6 +394,7 @@ class _MarkerPainter extends CustomPainter {
     required this.color,
     required this.aligned,
     this.simple = false,
+    this.travelDirection = false,
   });
 
   final Color color;

@@ -57,8 +57,7 @@ class MagneticField {
   bool get inBlackoutZone => horizontalIntensityNT < 2000.0;
 
   /// `true` in the WMM "caution zone" (2000 nT <= H < 6000 nT).
-  bool get inCautionZone =>
-      !inBlackoutZone && horizontalIntensityNT < 6000.0;
+  bool get inCautionZone => !inBlackoutZone && horizontalIntensityNT < 6000.0;
 
   /// WMM2025 declination uncertainty for this point, in degrees.
   ///
@@ -67,7 +66,8 @@ class MagneticField {
       math.sqrt(0.26 * 0.26 + math.pow(5417.0 / horizontalIntensityNT, 2));
 
   @override
-  String toString() => 'MagneticField(D: ${declinationDeg.toStringAsFixed(2)}°, '
+  String toString() =>
+      'MagneticField(D: ${declinationDeg.toStringAsFixed(2)}°, '
       'I: ${inclinationDeg.toStringAsFixed(2)}°, '
       'H: ${horizontalIntensityNT.toStringAsFixed(0)} nT)';
 }
@@ -94,6 +94,12 @@ class Wmm2025 {
 
   /// The last decimal year the model is valid for.
   static const double validUntil = kWmmEpoch + 5.0;
+
+  /// Refuse to present extrapolated declination as a current correction.
+  static bool isValidAt(DateTime when) {
+    final double year = DecimalYear.fromDateTime(when);
+    return year >= epoch && year < validUntil;
+  }
 
   /// Human readable model name, e.g. "WMM-2025".
   static String get modelName => kWmmModelName;
@@ -216,9 +222,8 @@ class Wmm2025 {
     final double q2 = ((q1 + a2) / (q1 + b2)) * ((q1 + a2) / (q1 + b2));
     final double ct = srlat / math.sqrt(q2 * crlat2 + srlat2);
     final double st = math.sqrt(math.max(0.0, 1.0 - ct * ct));
-    final double r2 = altitudeKm * altitudeKm +
-        2.0 * q1 +
-        (a4 - c4 * srlat2) / (q * q);
+    final double r2 =
+        altitudeKm * altitudeKm + 2.0 * q1 + (a4 - c4 * srlat2) / (q * q);
     final double r = math.sqrt(r2);
     final double d = math.sqrt(a2 * crlat2 + b2 * srlat2);
     final double ca = (altitudeKm + d) / r;
@@ -259,7 +264,8 @@ class Wmm2025 {
           }
           p[n + m * _size] =
               ct * p[n - 1 + m * _size] - k[m][n] * p[n - 2 + m * _size];
-          dp[m][n] = ct * dp[m][n - 1] -
+          dp[m][n] =
+              ct * dp[m][n - 1] -
               st * p[n - 1 + m * _size] -
               k[m][n] * dp[m][n - 2];
         }
@@ -371,12 +377,10 @@ class Wmm2025 {
       const int d1 = 1;
       double d2 = (n - m + d1) / d1;
       while (d2 > 0) {
-        k[m][n] =
-            (((n - 1) * (n - 1)) - (m * m)) / ((2 * n - 1) * (2 * n - 3));
+        k[m][n] = (((n - 1) * (n - 1)) - (m * m)) / ((2 * n - 1) * (2 * n - 3));
         if (m > 0) {
           final double flnmj = ((n - m + 1) * j) / (n + m);
-          snorm[n + m * _size] =
-              snorm[n + (m - 1) * _size] * math.sqrt(flnmj);
+          snorm[n + m * _size] = snorm[n + (m - 1) * _size] * math.sqrt(flnmj);
           j = 1;
           c[n][m - 1] = snorm[n + m * _size] * c[n][m - 1];
           cd[n][m - 1] = snorm[n + m * _size] * cd[n][m - 1];

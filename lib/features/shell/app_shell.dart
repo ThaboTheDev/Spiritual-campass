@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,7 @@ import '../centres/centres_screen.dart';
 import '../compass/compass_controller.dart';
 import '../compass/compass_screen.dart';
 import '../guide/guide_screen.dart';
+import '../location/location_controller.dart';
 import '../location/location_screen.dart';
 import '../msamo/msamo_screen.dart';
 
@@ -31,6 +34,7 @@ class _AppShellState extends ConsumerState<AppShell>
   static const int _tabCount = 5;
 
   late int _index;
+  bool _restoreLocationTracking = false;
   final Set<int> _visited = <int>{};
 
   @override
@@ -50,18 +54,30 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CompassController compass =
-        ref.read(compassControllerProvider.notifier);
+    final CompassController compass = ref.read(
+      compassControllerProvider.notifier,
+    );
     switch (state) {
       case AppLifecycleState.resumed:
         compass.onAppResumed();
+        if (_restoreLocationTracking) {
+          _restoreLocationTracking = false;
+          unawaited(
+            ref.read(locationControllerProvider.notifier).startTracking(),
+          );
+        }
       case AppLifecycleState.inactive:
         // Transient (notification shade, permission dialog): keep running.
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
+        final LocationState location = ref.read(locationControllerProvider);
+        _restoreLocationTracking =
+            _restoreLocationTracking || location.tracking || location.loading;
         compass.onAppPaused();
+        // Location can have been started from its own tab while Compass is off.
+        ref.read(locationControllerProvider.notifier).stopTracking();
     }
   }
 
@@ -100,14 +116,9 @@ class _AppShellState extends ConsumerState<AppShell>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: IndexedStack(
         index: _index,
-        children: <Widget>[
-          for (int i = 0; i < _tabCount; i++) _screen(i),
-        ],
+        children: <Widget>[for (int i = 0; i < _tabCount; i++) _screen(i)],
       ),
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: _index,
-        onTap: _onTap,
-      ),
+      bottomNavigationBar: AppBottomNav(currentIndex: _index, onTap: _onTap),
     );
   }
 }

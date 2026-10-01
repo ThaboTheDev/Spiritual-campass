@@ -37,7 +37,16 @@ fi
 
 if [[ -d "$TARGET/ios" ]]; then
   mkdir -p "$TARGET/ios"
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "error: python3 is needed to register CompassPlugin.swift in Xcode." >&2
+    exit 1
+  fi
+  if [[ ! -f "$TARGET/ios/Runner.xcodeproj/project.pbxproj" ]]; then
+    echo "error: generate the iOS scaffold before applying platform config." >&2
+    exit 1
+  fi
   cp -R "$REPO_ROOT/platform_config/ios/." "$TARGET/ios/"
+  python3 "$REPO_ROOT/tool/register_ios_compass.py" "$TARGET/ios/Runner.xcodeproj/project.pbxproj"
   echo "  ios/ updated"
 fi
 
