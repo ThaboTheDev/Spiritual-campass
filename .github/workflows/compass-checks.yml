@@ -36,7 +36,7 @@ jobs:
   android:
     name: Android bridge compilation and native regression tests
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -55,11 +55,25 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --no-daemon
+      # Release exercises R8 code shrinking and resource shrinking, so the
+      # keep rules in android/app/proguard-rules.pro are only proven here.
+      - name: Release build with R8 and resource shrinking
+        run: |
+          # Split per ABI so both 32-bit and 64-bit artifacts are shrunk and
+          # produced: the 1-2 GB phones this app targets are armeabi-v7a.
+          flutter build apk --release --split-per-abi \
+            --target-platform android-arm,android-arm64
+          flutter build appbundle --release
+          test -s build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          test -s build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          test -s build/app/outputs/bundle/release/app-release.aab
+          ls -l build/app/outputs/flutter-apk/*-release.apk \
+                build/app/outputs/bundle/release/app-release.aab
 
   ios:
     name: iOS bridge compilation and native frame regression tests
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - name: Select supported iOS SDK
@@ -74,6 +88,7 @@ jobs:
       - run: flutter pub get
       - run: flutter build ios --debug --no-codesign
       - run: flutter build ios --simulator --debug
+      - run: flutter build ios --release --no-codesign
       - name: Verify Swift Package Manager integration replaced CocoaPods
         run: |
           test ! -e ios/Podfile
