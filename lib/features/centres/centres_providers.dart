@@ -33,7 +33,7 @@ class CentresController extends AsyncNotifier<CentresData> {
   /// Downloads the list again (after login, or after an admin added a centre).
   Future<void> refresh() async {
     state = const AsyncValue<CentresData>.loading();
-    state = await AsyncValue<CentresData>.guard(_load);
+    state = await AsyncValue.guard<CentresData>(_load);
   }
 
   Future<CentresData> _load() async {
