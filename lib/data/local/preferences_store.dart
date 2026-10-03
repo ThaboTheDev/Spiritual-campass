@@ -21,7 +21,6 @@ class PreferencesStore {
   static const String _keyManualLongitude = 'manual.longitude';
   static const String _keyManualLabel = 'manual.label';
   static const String _keyManualAltitude = 'manual.altitude';
-  static const String _keyManualAccuracy = 'manual.accuracy';
   static const String _keyLockedBearing = 'msamo.lockedBearing';
   static const String _keyLastTab = 'shell.lastTab';
   // Historical name, kept so an upgrade keeps the language already chosen.
@@ -42,8 +41,6 @@ class PreferencesStore {
       longitude: longitude,
       altitudeMetres: _preferences.getDouble(_keyManualAltitude),
       label: _preferences.getString(_keyManualLabel),
-      accuracyMetres: _preferences.getDouble(_keyManualAccuracy),
-      isApproximate: true,
     );
   }
 
@@ -52,15 +49,10 @@ class PreferencesStore {
     await Future.wait(<Future<void>>[
       _preferences.setDouble(_keyManualLatitude, point.latitude),
       _preferences.setDouble(_keyManualLongitude, point.longitude),
-      if (point.accuracyMetres != null)
-        _preferences.setDouble(_keyManualAccuracy, point.accuracyMetres!)
-      else
-        _preferences.remove(_keyManualAccuracy),
       if (point.altitudeMetres != null)
         _preferences.setDouble(_keyManualAltitude, point.altitudeMetres!)
       else
         _preferences.remove(_keyManualAltitude),
-      _preferences.remove(_keyManualAccuracy),
       if (point.label != null && point.label!.isNotEmpty)
         _preferences.setString(_keyManualLabel, point.label!)
       else
@@ -74,7 +66,6 @@ class PreferencesStore {
       _preferences.remove(_keyManualLatitude),
       _preferences.remove(_keyManualLongitude),
       _preferences.remove(_keyManualAltitude),
-      _preferences.remove(_keyManualAccuracy),
       _preferences.remove(_keyManualLabel),
     ]);
   }

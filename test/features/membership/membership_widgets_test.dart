@@ -42,7 +42,8 @@ class FakeMembership extends MembershipController {
   Future<void> refreshEntitlement({
     bool afterPayment = false,
     bool silent = false,
-  }) async => calls.add('refresh');
+  }) async =>
+      calls.add('refresh');
 
   @override
   Future<void> cancelSubscription() async => calls.add('cancel');
@@ -55,20 +56,21 @@ Entitlement entitlement({
   bool mustChangePassword = false,
   int trialDays = 7,
   DateTime? endsAt,
-}) => Entitlement(
-  email: 'member@example.org',
-  status: state.name,
-  state: state,
-  access: access,
-  canCancel: state == EntitlementState.active,
-  priceMinor: 100,
-  currency: 'ZAR',
-  trialDays: trialDays,
-  endsAt: endsAt ?? DateTime.now().toUtc().add(const Duration(days: 5)),
-  fetchedAt: DateTime.now().toUtc(),
-  isAdmin: isAdmin,
-  mustChangePassword: mustChangePassword,
-);
+}) =>
+    Entitlement(
+      email: 'member@example.org',
+      status: state.name,
+      state: state,
+      access: access,
+      canCancel: state == EntitlementState.active,
+      priceMinor: 100,
+      currency: 'ZAR',
+      trialDays: trialDays,
+      endsAt: endsAt ?? DateTime.now().toUtc().add(const Duration(days: 5)),
+      fetchedAt: DateTime.now().toUtc(),
+      isAdmin: isAdmin,
+      mustChangePassword: mustChangePassword,
+    );
 
 void main() {
   /// Taps a control that may be below the fold on a small test surface.
@@ -82,16 +84,18 @@ void main() {
 
   /// Wraps a screen with the providers it reads.
   Widget host(Widget child, FakeMembership fake) => ProviderScope(
-    overrides: <Override>[
-      membershipControllerProvider.overrideWith(() => fake),
-    ],
-    child: MaterialApp(theme: ThemeData.dark(), home: child),
-  );
+        overrides: <Override>[
+          membershipControllerProvider.overrideWith(() => fake),
+        ],
+        child: MaterialApp(
+          theme: ThemeData.dark(),
+          home: child,
+        ),
+      );
 
   group('login screen', () {
-    testWidgets('a malformed address is refused without a request', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('a malformed address is refused without a request',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -110,9 +114,8 @@ void main() {
       expect(find.text(S.authBadEmail.text), findsOneWidget);
     });
 
-    testWidgets('a missing password is refused too', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('a missing password is refused too',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -127,9 +130,8 @@ void main() {
       expect(find.text(S.authNoPassword.text), findsOneWidget);
     });
 
-    testWidgets('the password is hidden until the eye is tapped', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('the password is hidden until the eye is tapped',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -149,9 +151,8 @@ void main() {
       expect(tester.widget<TextField>(field).obscureText, isFalse);
     });
 
-    testWidgets('switching to "create account" shows the length hint', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('switching to "create account" shows the length hint',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -167,9 +168,8 @@ void main() {
   });
 
   group('forced password change', () {
-    testWidgets('has no app bar, no back button and refuses to pop', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('has no app bar, no back button and refuses to pop',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(
           phase: AuthPhase.mustChangePassword,
@@ -181,15 +181,13 @@ void main() {
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(BackButton), findsNothing);
 
-      final PopScope<Object?> scope = tester.widget<PopScope<Object?>>(
-        find.byType(PopScope<Object?>),
-      );
+      final PopScope<Object?> scope =
+          tester.widget<PopScope<Object?>>(find.byType(PopScope<Object?>));
       expect(scope.canPop, isFalse);
     });
 
-    testWidgets('the Android back button does not escape the screen', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('the Android back button does not escape the screen',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.mustChangePassword),
       );
@@ -208,28 +206,26 @@ void main() {
         ),
       );
 
-      final NavigatorState navigator = tester.state<NavigatorState>(
-        find.byType(Navigator),
-      );
+      final NavigatorState navigator =
+          tester.state<NavigatorState>(find.byType(Navigator));
       navigator.pushNamed('/change');
       await tester.pumpAndSettle();
       expect(find.byType(ChangePasswordScreen), findsOneWidget);
 
-      // The Android system back button ends in Navigator.maybePop. Flutter's
-      // Navigator.maybePop returns true when a PopScope refuses the pop (the
-      // pop was handled), so the surviving route is the real evidence.
-      await Navigator.maybePop(
+      // The Android system back button ends in Navigator.maybePop, which
+      // PopScope(canPop: false) refuses.
+      final bool popped = await Navigator.maybePop(
         tester.element(find.byType(ChangePasswordScreen)),
       );
       await tester.pumpAndSettle();
 
+      expect(popped, isFalse);
       expect(find.byType(ChangePasswordScreen), findsOneWidget);
       expect(find.text('behind the gate'), findsNothing);
     });
 
-    testWidgets('mismatched passwords are caught before any request', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('mismatched passwords are caught before any request',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.mustChangePassword),
       );
@@ -261,9 +257,8 @@ void main() {
   });
 
   group('trial page', () {
-    testWidgets('offers "Pay now" in a direct build', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('offers "Pay now" in a direct build',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.trialIntro,
@@ -278,9 +273,8 @@ void main() {
       expect(find.byKey(TrialIntroScreen.startKey), findsOneWidget);
     });
 
-    testWidgets('hides every purchase control in a store build', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('hides every purchase control in a store build',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.trialIntro,
@@ -296,9 +290,8 @@ void main() {
       expect(find.byKey(TrialIntroScreen.startKey), findsOneWidget);
     });
 
-    testWidgets('"Start using the app" marks the page as seen', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('"Start using the app" marks the page as seen',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.trialIntro,
@@ -316,9 +309,8 @@ void main() {
   });
 
   group('paywall', () {
-    testWidgets('a store build shows the notice instead of "Pay now"', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('a store build shows the notice instead of "Pay now"',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.paywall,
@@ -336,9 +328,8 @@ void main() {
       expect(find.text(S.payStore.text), findsOneWidget);
     });
 
-    testWidgets('a direct build can pay and log out', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('a direct build can pay and log out',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.paywall,
@@ -361,9 +352,8 @@ void main() {
   });
 
   group('account screen', () {
-    testWidgets('hides the admin area for an ordinary member', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('hides the admin area for an ordinary member',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.ready,
@@ -377,9 +367,8 @@ void main() {
       expect(find.text(S.adminOpen.text), findsNothing);
     });
 
-    testWidgets('shows the admin area for an administrator', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('shows the admin area for an administrator',
+        (WidgetTester tester) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.ready,
@@ -394,9 +383,8 @@ void main() {
   });
 
   group('temporary password dialog', () {
-    testWidgets('shows the password once and forgets it when closed', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('shows the password once and forgets it when closed',
+        (WidgetTester tester) async {
       const String secret = 'Zx9-tmp-Pass';
       final List<MethodCall> platformCalls = <MethodCall>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -407,10 +395,8 @@ void main() {
         },
       );
       addTearDown(
-        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          null,
-        ),
+        () => tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null),
       );
 
       await tester.pumpWidget(
@@ -455,9 +441,8 @@ void main() {
       expect(find.byType(TemporaryPasswordDialog), findsNothing);
     });
 
-    testWidgets('cannot be dismissed by tapping outside', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('cannot be dismissed by tapping outside',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData.dark(),

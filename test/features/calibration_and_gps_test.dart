@@ -3,238 +3,152 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tshk_compass/core/geo/coordinates.dart';
 import 'package:tshk_compass/core/geo/heading_math.dart';
-import 'package:tshk_compass/core/geo/heading_quality.dart';
+import 'package:tshk_compass/data/repositories/location_repository.dart';
 import 'package:tshk_compass/features/compass/engine/heading_source.dart';
 import 'package:tshk_compass/features/compass/engine/sources/gps_course_source.dart';
 import 'package:tshk_compass/features/compass/engine/sources/relative_orientation_source.dart';
 
-import '../support/compass_fakes.dart';
+class _FakeLocationRepository implements LocationRepository {
+  final StreamController<GeoPoint> controller =
+      StreamController<GeoPoint>.broadcast();
+
+  @override
+  Stream<GeoPoint> get positionStream => controller.stream;
+
+  @override
+  Future<LocationAccess> checkAccess() async => LocationAccess.whileInUse;
+
+  @override
+  Future<LocationAccess> requestAccess() async => LocationAccess.whileInUse;
+
+  @override
+  Future<bool> isServiceEnabled() async => true;
+
+  @override
+  Future<GeoPoint?> getCurrentPoint() async => null;
+
+  @override
+  Future<GeoPoint?> getLastKnownPoint() async => null;
+
+  @override
+  Future<bool> openAppSettings() async => true;
+
+  @override
+  Future<bool> openLocationSettings() async => true;
+
+  @override
+  double distanceBetween(GeoPoint from, GeoPoint to) => 0;
+}
 
 void main() {
-  final DateTime origin = DateTime.utc(2026, 1, 1);
-  group('relative anchors', () {
-    test(
-      'sun is true north; hand compass is magnetic; restart clears the origin',
-      () {
-        DateTime now = origin;
-        final RelativeCalibration c = RelativeCalibration(now: () => now);
-        expect(c.set(300, CalibrationAnchor.sun), isFalse);
-        c.observe(40);
-        expect(c.set(300, CalibrationAnchor.sun), isTrue);
-        expect(c.isTrueNorth, isTrue);
-        expect(HeadingMath.applyOffset(40, c.offsetDeg!), closeTo(300, 1e-9));
-        c.clear();
-        expect(c.latestRelativeDeg, 40);
-        expect(c.set(0, CalibrationAnchor.north), isTrue);
-        expect(c.isTrueNorth, isFalse);
-        now = now.add(const Duration(seconds: 61));
-        expect(c.isCalibrated, isFalse);
-        c.observe(10);
-        expect(c.set(0, CalibrationAnchor.north), isTrue);
-        c.resetTracking();
-        expect(c.latestRelativeDeg, isNull);
-        expect(c.isCalibrated, isFalse);
-        expect(c.set(0, CalibrationAnchor.north), isFalse);
-      },
-    );
-    test('old, moving and non-finite observations cannot be anchored', () {
-      DateTime now = origin;
-      final RelativeCalibration c = RelativeCalibration(now: () => now);
-      c.observe(10, anchorable: false);
-      expect(c.set(0, CalibrationAnchor.north), isFalse);
-      c.observe(10);
-      now = now.add(const Duration(seconds: 1));
-      expect(c.set(0, CalibrationAnchor.north), isFalse);
-      c.observe(double.nan);
-      expect(c.set(0, CalibrationAnchor.north), isFalse);
+  group('sun calibration offset', () {
+    test('offset = sun azimuth − relative heading; result is TRUE north', () {
+      final RelativeCalibration cal = RelativeCalibration();
+      expect(cal.set(300, CalibrationAnchor.sun), isFalse,
+          reason: 'no relative heading seen yet');
+
+      cal.observe(40); // gyro says we have turned 40° since start
+      expect(cal.set(300, CalibrationAnchor.sun), isTrue); // sun at 300° true
+      expect(cal.offsetDeg, closeTo(260, 1e-9));
+      expect(cal.isTrueNorth, isTrue);
+      // Now facing the sun: heading must read the sun's azimuth.
+      expect(HeadingMath.applyOffset(40, cal.offsetDeg!), closeTo(300, 1e-9));
+      // Turn 90° right: 30° true.
+      expect(HeadingMath.applyOffset(130, cal.offsetDeg!), closeTo(30, 1e-9));
     });
-    test(
-      'source start, sensor gaps and cancellation invalidate calibration',
-      () async {
-        DateTime now = origin;
-        final FakeMotionSensors sensors = FakeMotionSensors();
-        final RelativeCalibration calibration = RelativeCalibration(
-          now: () => now,
-        );
-        calibration.observe(40);
-        calibration.set(0, CalibrationAnchor.north);
-        final RelativeOrientationSource source = RelativeOrientationSource(
-          sensors,
-          calibration,
-        );
-        final List<HeadingSample> samples = [];
-        final StreamSubscription<HeadingSample> sub = source.start().listen(
-          samples.add,
-        );
-        expect(calibration.isCalibrated, isFalse);
-        sensors.level(now);
-        await flushStreams();
-        sensors.still(now);
-        await flushStreams();
-        expect(samples.last.isProvisional, isTrue);
-        expect(calibration.set(0, CalibrationAnchor.north), isTrue);
-        now = now.add(const Duration(milliseconds: 100));
-        sensors.level(now);
-        sensors.still(now);
-        await flushStreams();
-        expect(samples.last.isProvisional, isFalse);
-        expect(samples.last.accuracyDeg, isNull, reason: 'no invented ±10°');
-        expect(samples.last.assessment.confidence, HeadingConfidence.uncertain);
-        now = now.add(const Duration(seconds: 1));
-        sensors.level(now);
-        await flushStreams();
-        sensors.still(now);
-        await flushStreams();
-        expect(samples.last.isProvisional, isTrue);
-        await sub.cancel();
-        expect(calibration.latestRelativeDeg, isNull);
-        await sensors.close();
-      },
-    );
+
+    test('north calibration is MAGNETIC (declination still applies)', () {
+      final RelativeCalibration cal = RelativeCalibration();
+      cal.observe(350);
+      expect(cal.set(0, CalibrationAnchor.north), isTrue);
+      expect(cal.offsetDeg, closeTo(10, 1e-9));
+      expect(cal.isTrueNorth, isFalse);
+      final double magnetic = HeadingMath.applyOffset(350, cal.offsetDeg!);
+      expect(magnetic, closeTo(0, 1e-9));
+      // Johannesburg: declination about -20° → true heading 340°.
+      expect(HeadingMath.magneticToTrue(magnetic, -20), closeTo(340, 1e-9));
+    });
+
+    test('clear forgets the anchor but keeps the latest relative heading', () {
+      final RelativeCalibration cal = RelativeCalibration();
+      cal.observe(10);
+      cal.set(90, CalibrationAnchor.sun);
+      cal.clear();
+      expect(cal.isCalibrated, isFalse);
+      expect(cal.latestRelativeDeg, 10);
+    });
+
+    test('wraps across 0/360', () {
+      expect(
+        HeadingMath.calibrationOffset(targetHeadingDeg: 10, relativeHeadingDeg: 350),
+        closeTo(20, 1e-9),
+      );
+      expect(
+        HeadingMath.calibrationOffset(targetHeadingDeg: 350, relativeHeadingDeg: 10),
+        closeTo(340, 1e-9),
+      );
+    });
   });
 
-  group('explicit GPS travel direction', () {
-    test(
-      'freshness, fix accuracy and speed uncertainty matter, not just speed',
-      () {
-        GeoPoint point({
-          double speed = 1.5,
-          double error = 10,
-          double speedError = 0.2,
-          DateTime? at,
-          double? courseError = 5,
-        }) => GeoPoint(
-          latitude: -26,
-          longitude: 28,
-          speedMps: speed,
-          accuracyMetres: error,
-          courseDeg: 90,
-          courseAccuracyDeg: courseError,
-          speedAccuracyMps: speedError,
-          timestamp: at ?? origin,
-        );
-        expect(point().hasWalkingCourseAt(origin), isTrue);
-        expect(point(speed: 0.2).hasWalkingCourseAt(origin), isFalse);
-        expect(point(error: 100).hasWalkingCourseAt(origin), isFalse);
-        expect(point(speedError: 1).hasWalkingCourseAt(origin), isFalse);
-        expect(point(courseError: 45).hasWalkingCourseAt(origin), isFalse);
-        expect(
-          point(
-            at: origin.subtract(const Duration(minutes: 1)),
-          ).hasWalkingCourseAt(origin),
-          isFalse,
-        );
-        expect(
-          const GeoPoint(
-            latitude: 0,
-            longitude: 0,
-            speedMps: 2,
-            courseDeg: 90,
-          ).hasWalkingCourseAt(origin),
-          isFalse,
-        );
-      },
-    );
-    test(
-      'requires sustained movement and immediately clears course on stopping',
-      () async {
-        DateTime now = origin;
-        final FakeLocationRepository repository = FakeLocationRepository();
-        final GpsCourseSource source = GpsCourseSource(
-          repository,
-          now: () => now,
-        );
-        final List<HeadingSample> samples = [];
-        final StreamSubscription<HeadingSample> sub = source.start().listen(
-          samples.add,
-        );
-        for (int i = 0; i < 3; i++) {
-          now = origin.add(Duration(seconds: i));
-          repository.controller.add(
-            GeoPoint(
-              latitude: -26,
-              longitude: 28 + i * 0.00002,
-              timestamp: now,
-              accuracyMetres: 5,
-              speedMps: 1.5,
-              speedAccuracyMps: 0.2,
-              courseDeg: 123.4,
-              courseAccuracyDeg: 5,
-            ),
-          );
-          await flushStreams();
-        }
-        expect(samples[0].isProvisional, isTrue);
-        expect(samples[1].isProvisional, isTrue);
-        expect(samples[2].isProvisional, isFalse);
-        expect(samples[2].isTrueNorth, isTrue);
-        expect(samples[2].headingDeg, 123.4);
-        now = now.add(const Duration(seconds: 1));
-        repository.controller.add(
-          GeoPoint(
-            latitude: -26,
-            longitude: 28,
-            timestamp: now,
-            accuracyMetres: 5,
-            speedMps: 0.1,
-            courseDeg: 123.4,
-          ),
-        );
-        await flushStreams();
-        expect(samples.last.isProvisional, isTrue);
-        expect(samples.last.assessment.issue, HeadingIssue.waitingForMovement);
-        await sub.cancel();
-        await repository.controller.close();
-      },
-    );
-    test(
-      'unknown course accuracy needs a baseline exceeding position uncertainty',
-      () async {
-        DateTime now = origin;
-        final FakeLocationRepository repository = FakeLocationRepository();
-        final List<HeadingSample> samples = [];
-        final StreamSubscription<HeadingSample> sub = GpsCourseSource(
-          repository,
-          now: () => now,
-        ).start().listen(samples.add);
-        for (int i = 0; i < 7; i++) {
-          now = origin.add(Duration(seconds: i));
-          repository.controller.add(
-            GeoPoint(
-              latitude: -26,
-              longitude: 28 + i * 0.00012,
-              timestamp: now,
-              accuracyMetres: 5,
-              speedMps: 12,
-              courseDeg: 0,
-            ),
-          );
-          await flushStreams();
-        }
-        expect(samples[1].isProvisional, isTrue);
-        expect(
-          samples.skip(3).map((HeadingSample sample) => sample.isProvisional),
-          everyElement(isFalse),
-        );
-        expect(samples.last.isProvisional, isFalse);
-        expect(
-          samples.last.headingDeg,
-          closeTo(90, 0.1),
-          reason: 'derive movement east, do not trust unknown native course 0',
-        );
-        expect(samples.last.assessment.confidence, HeadingConfidence.uncertain);
-        await sub.cancel();
-        await repository.controller.close();
-      },
-    );
-    test(
-      'disabled location service is unavailable, even with permission',
-      () async {
-        final FakeLocationRepository repository = FakeLocationRepository()
-          ..enabled = false;
-        expect(await GpsCourseSource(repository).isAvailable(), isFalse);
-        await repository.controller.close();
-      },
-    );
+  group('GPS course', () {
+    test('only walking fixes with a sane course are accepted', () {
+      const GeoPoint standing = GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 0.2, courseDeg: 90);
+      const GeoPoint walking = GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 1.4, courseDeg: 90,
+          courseAccuracyDeg: 20);
+      const GeoPoint noCourse =
+          GeoPoint(latitude: -26, longitude: 28, speedMps: 1.4);
+      const GeoPoint badCourse = GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 1.4, courseDeg: -1);
+      const GeoPoint poorAccuracy = GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 1.4, courseDeg: 90,
+          courseAccuracyDeg: 120);
+      const GeoPoint unknownAccuracy = GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 1.4, courseDeg: 90,
+          courseAccuracyDeg: 0);
+
+      expect(standing.hasWalkingCourse, isFalse);
+      expect(walking.hasWalkingCourse, isTrue);
+      expect(noCourse.hasWalkingCourse, isFalse);
+      expect(badCourse.hasWalkingCourse, isFalse);
+      expect(poorAccuracy.hasWalkingCourse, isFalse);
+      expect(unknownAccuracy.hasWalkingCourse, isTrue);
+    });
+
+    test('samples are flagged true-north so no declination is added',
+        () async {
+      final _FakeLocationRepository repo = _FakeLocationRepository();
+      final GpsCourseSource source = GpsCourseSource(repo);
+      expect(await source.isAvailable(), isTrue);
+
+      final List<HeadingSample> samples = <HeadingSample>[];
+      final StreamSubscription<HeadingSample> sub =
+          source.start().listen(samples.add);
+
+      repo.controller.add(const GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 0.1, courseDeg: 10));
+      repo.controller.add(const GeoPoint(
+          latitude: -26, longitude: 28, speedMps: 1.5, courseDeg: 123.4));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(samples, hasLength(1));
+      expect(samples.single.isTrueNorth, isTrue);
+      expect(samples.single.headingDeg, closeTo(123.4, 1e-9));
+      // The controller keeps true samples as-is: magnetic = true − declination.
+      expect(
+        Angles.normalize360(samples.single.headingDeg - (-20)),
+        closeTo(143.4, 1e-9),
+      );
+      await sub.cancel();
+      await repo.controller.close();
+    });
+
+    test('rung timeouts favour walking', () {
+      final GpsCourseSource source = GpsCourseSource(_FakeLocationRepository());
+      expect(source.kind, HeadingSourceKind.gpsCourse);
+      expect(source.acquireTimeout, greaterThan(const Duration(seconds: 30)));
+      expect(source.staleTimeout, const Duration(seconds: 8));
+    });
   });
 }

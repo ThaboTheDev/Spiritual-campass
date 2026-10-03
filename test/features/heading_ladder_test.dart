@@ -2,399 +2,275 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tshk_compass/core/geo/heading_quality.dart';
 import 'package:tshk_compass/features/compass/engine/heading_ladder.dart';
 import 'package:tshk_compass/features/compass/engine/heading_source.dart';
 
-class ScriptSource implements HeadingSource {
-  ScriptSource(
-    this.kind,
-    this.now, {
-    this.silent = false,
+/// A scripted rung: optionally unavailable, optionally silent, otherwise
+/// emitting one sample every [period] until [stopAfter] samples.
+class _FakeSource implements HeadingSource {
+  _FakeSource(
+    this.kind, {
     this.available = true,
+    this.silent = false,
+    this.period = const Duration(milliseconds: 100),
     this.stopAfter,
+    this.isTrue = false,
     this.provisional = false,
   });
+
   @override
   final HeadingSourceKind kind;
-  final DateTime Function() now;
-  final bool silent;
   final bool available;
+  final bool silent;
+  final Duration period;
   final int? stopAfter;
+  final bool isTrue;
   final bool provisional;
-  Future<bool>? availability;
-  HeadingAssessment assessment = HeadingAssessment.reliable;
-  Future<void>? cancellation;
+
   int starts = 0;
   int cancels = 0;
   int emitted = 0;
-  StreamController<HeadingSample>? controller;
+  Timer? _timer;
+  StreamController<HeadingSample>? _controller;
+
   @override
-  Future<bool> isAvailable() => availability ?? Future<bool>.value(available);
+  Future<bool> isAvailable() async => available;
+
   @override
   Duration? get acquireTimeout => null;
+
   @override
   Duration? get staleTimeout => null;
+
   @override
   Stream<HeadingSample> start() {
     starts++;
-    Timer? timer;
-    late final StreamController<HeadingSample> c;
-    c = StreamController<HeadingSample>(
+    late final StreamController<HeadingSample> controller;
+    controller = StreamController<HeadingSample>(
       onListen: () {
-        if (!silent) {
-          timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-            if (stopAfter != null && emitted >= stopAfter!) {
-              return;
-            }
-            emitted++;
-            c.add(sample(45));
-          });
+        if (silent || (stopAfter != null && emitted >= stopAfter!)) {
+          return;
         }
+        _timer = Timer.periodic(period, (Timer t) {
+          if (stopAfter != null && emitted >= stopAfter!) {
+            t.cancel();
+            return; // go quiet: the ladder must notice staleness
+          }
+          emitted++;
+          controller.add(
+            HeadingSample(
+              headingDeg: 45,
+              isTrueNorth: isTrue,
+              timestamp: DateTime.now(),
+              isProvisional: provisional,
+            ),
+          );
+        });
       },
       onCancel: () {
         cancels++;
-        timer?.cancel();
-        return cancellation;
+        _timer?.cancel();
       },
     );
-    controller = c;
-    return c.stream;
+    _controller = controller;
+    return controller.stream;
   }
 
-  HeadingSample sample(double heading, {DateTime? at}) => HeadingSample(
-    headingDeg: heading,
-    isTrueNorth: false,
-    timestamp: at ?? now(),
-    isProvisional: provisional,
-    assessment: assessment,
-  );
-  void emit(double heading, {DateTime? at}) =>
-      controller!.add(sample(heading, at: at));
+  /// Emits one sample on demand (only when [silent]).
+  void emit(double heading) {
+    _controller?.add(
+      HeadingSample(headingDeg: heading, isTrueNorth: isTrue, timestamp: DateTime.now()),
+    );
+  }
 }
 
 void main() {
-  final DateTime origin = DateTime.utc(2026, 1, 1);
-  test('uses a live healthy preferred sensor', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-      );
-      final ScriptSource raw = ScriptSource(HeadingSourceKind.rawSensors, now);
+  const Duration acquire = Duration(seconds: 3);
+  const Duration stale = Duration(seconds: 3);
+
+  test('uses the first rung when it delivers samples', () {
+    fakeAsync((FakeAsync async) {
+      final _FakeSource fused = _FakeSource(HeadingSourceKind.fusedCompass);
+      final _FakeSource raw = _FakeSource(HeadingSourceKind.rawSensors);
       final HeadingLadder ladder = HeadingLadder(
-        sources: [fused, raw],
-        now: now,
+        sources: <HeadingSource>[fused, raw],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
       );
+      final List<LadderStatus> statuses = <LadderStatus>[];
+      final List<HeadingSample> samples = <HeadingSample>[];
+      ladder.status.listen(statuses.add);
+      ladder.samples.listen(samples.add);
+
       ladder.start();
-      a.elapse(const Duration(seconds: 1));
+      async.elapse(const Duration(seconds: 1));
+
       expect(ladder.current.phase, LadderPhase.active);
       expect(ladder.current.source, HeadingSourceKind.fusedCompass);
+      expect(samples, isNotEmpty);
       expect(raw.starts, 0);
       ladder.dispose();
-      a.flushMicrotasks();
     });
   });
-  test(
-    'absent, silent and hung-availability sensors have bounded acquisition',
-    () {
-      fakeAsync((FakeAsync a) {
-        final DateTime Function() now = a.getClock(origin).now;
-        final ScriptSource absent = ScriptSource(
-          HeadingSourceKind.fusedCompass,
-          now,
-          available: false,
-        );
-        final ScriptSource hung = ScriptSource(
-          HeadingSourceKind.rawSensors,
-          now,
-        )..availability = Completer<bool>().future;
-        final ScriptSource silent = ScriptSource(
-          HeadingSourceKind.relativeCalibrated,
-          now,
-          silent: true,
-        );
-        final HeadingLadder ladder = HeadingLadder(
-          sources: [absent, hung, silent],
-          now: now,
-        );
-        ladder.start();
-        a.elapse(const Duration(seconds: 7));
-        expect(absent.starts, 0);
-        expect(hung.starts, 0);
-        expect(silent.starts, 1);
-        expect(ladder.current.phase, LadderPhase.exhausted);
-        ladder.dispose();
-        a.flushMicrotasks();
-      });
-    },
-  );
-  test('bad quality is immediately visible and sustained failure demotes', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-      );
-      final ScriptSource raw = ScriptSource(HeadingSourceKind.rawSensors, now);
+
+  test('falls through a silent rung after the acquire timeout', () {
+    fakeAsync((FakeAsync async) {
+      final _FakeSource fused =
+          _FakeSource(HeadingSourceKind.fusedCompass, silent: true);
+      final _FakeSource raw = _FakeSource(HeadingSourceKind.rawSensors);
       final HeadingLadder ladder = HeadingLadder(
-        sources: [fused, raw],
-        now: now,
+        sources: <HeadingSource>[fused, raw],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
       );
-      final List<HeadingSample> readings = [];
-      ladder.samples.listen(readings.add);
+      ladder.status.listen((_) {});
+      ladder.samples.listen((_) {});
+
       ladder.start();
-      a.elapse(const Duration(milliseconds: 150));
-      fused.assessment = const HeadingAssessment(
-        HeadingConfidence.unreliable,
-        HeadingIssue.magneticInterference,
-      );
-      a.elapse(const Duration(milliseconds: 100));
-      expect(ladder.current.phase, LadderPhase.degraded);
-      expect(readings.last.assessment.isUsable, isFalse);
-      a.elapse(const Duration(milliseconds: 2200));
-      expect(ladder.current.source, HeadingSourceKind.rawSensors);
-      expect(fused.cancels, 1);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test(
-    'a brief glitch requires sustained recovery without source flapping',
-    () {
-      fakeAsync((FakeAsync a) {
-        final DateTime Function() now = a.getClock(origin).now;
-        final ScriptSource fused = ScriptSource(
-          HeadingSourceKind.fusedCompass,
-          now,
-          silent: true,
-        );
-        final ScriptSource raw = ScriptSource(
-          HeadingSourceKind.rawSensors,
-          now,
-        );
-        final HeadingLadder ladder = HeadingLadder(
-          sources: [fused, raw],
-          now: now,
-        );
-        ladder.start();
-        a.flushMicrotasks();
-        fused.emit(0);
-        a.flushMicrotasks();
-        a.elapse(const Duration(milliseconds: 50));
-        fused.assessment = const HeadingAssessment(
-          HeadingConfidence.unreliable,
-          HeadingIssue.calibrationRequired,
-        );
-        fused.emit(0);
-        a.flushMicrotasks();
-        fused.assessment = HeadingAssessment.reliable;
-        for (int i = 0; i < 12; i++) {
-          a.elapse(const Duration(milliseconds: 100));
-          fused.emit(0);
-          a.flushMicrotasks();
-        }
-        expect(ladder.current.phase, LadderPhase.active);
-        expect(raw.starts, 0);
-        ladder.dispose();
-        a.flushMicrotasks();
-      });
-    },
-  );
-  test('silence restarts once, then falls through', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-        stopAfter: 2,
-      );
-      final ScriptSource raw = ScriptSource(HeadingSourceKind.rawSensors, now);
-      final HeadingLadder ladder = HeadingLadder(
-        sources: [fused, raw],
-        now: now,
-      );
-      final List<LadderPhase> phases = [];
-      ladder.status.listen((LadderStatus s) => phases.add(s.phase));
-      ladder.start();
-      a.elapse(const Duration(seconds: 6));
-      expect(phases, contains(LadderPhase.stale));
-      expect(fused.starts, 2);
-      expect(ladder.current.source, HeadingSourceKind.rawSensors);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test('duplicate timestamps do not keep an old direction alive', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-        silent: true,
-      );
-      final HeadingLadder ladder = HeadingLadder(sources: [fused], now: now);
-      ladder.start();
-      a.flushMicrotasks();
-      fused.emit(0);
-      a.flushMicrotasks();
-      a.elapse(const Duration(seconds: 1));
-      fused.emit(90, at: origin);
-      a.flushMicrotasks();
-      a.elapse(const Duration(milliseconds: 1100));
-      expect(ladder.current.phase, LadderPhase.stale);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test('old, future and non-finite samples cannot acquire a sensor', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource source = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-        silent: true,
-      );
-      final HeadingLadder ladder = HeadingLadder(sources: [source], now: now);
-      ladder.start();
-      a.flushMicrotasks();
-      source.emit(0, at: origin.subtract(const Duration(minutes: 1)));
-      a.flushMicrotasks();
-      source.emit(0, at: origin.add(const Duration(minutes: 1)));
-      a.flushMicrotasks();
-      source.emit(double.nan);
-      a.flushMicrotasks();
-      expect(ladder.current.phase, isNot(LadderPhase.active));
-      a.elapse(const Duration(seconds: 3));
-      expect(ladder.current.phase, LadderPhase.exhausted);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test(
-    'uncalibrated relative source remains available for explicit user anchoring',
-    () {
-      fakeAsync((FakeAsync a) {
-        final DateTime Function() now = a.getClock(origin).now;
-        final ScriptSource relative = ScriptSource(
-          HeadingSourceKind.relativeCalibrated,
-          now,
-          provisional: true,
-        );
-        final HeadingLadder ladder = HeadingLadder(
-          sources: [relative],
-          now: now,
-        );
-        ladder.start();
-        a.elapse(const Duration(seconds: 10));
-        expect(ladder.current.phase, LadderPhase.active);
-        expect(ladder.current.source, HeadingSourceKind.relativeCalibrated);
-        ladder.dispose();
-        a.flushMicrotasks();
-      });
-    },
-  );
-  test('native fusion is restored by a bounded healthy background probe', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused =
-          ScriptSource(HeadingSourceKind.fusedCompass, now)
-            ..assessment = const HeadingAssessment(
-              HeadingConfidence.unreliable,
-              HeadingIssue.magneticInterference,
-            );
-      final ScriptSource raw = ScriptSource(HeadingSourceKind.rawSensors, now);
-      final HeadingLadder ladder = HeadingLadder(
-        sources: [fused, raw],
-        now: now,
-        recoveryInterval: const Duration(seconds: 2),
-      );
-      ladder.start();
-      a.elapse(const Duration(milliseconds: 2500));
-      expect(ladder.current.source, HeadingSourceKind.rawSensors);
-      fused.assessment = HeadingAssessment.reliable;
-      a.elapse(const Duration(seconds: 4));
+      async.elapse(const Duration(milliseconds: 2900));
+      expect(ladder.current.phase, LadderPhase.trying);
       expect(ladder.current.source, HeadingSourceKind.fusedCompass);
-      expect(fused.starts, greaterThanOrEqualTo(3));
-      expect(raw.cancels, 1);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test('late availability after stop cannot resurrect sensors', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final Completer<bool> availability = Completer<bool>();
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-      )..availability = availability.future;
-      final HeadingLadder ladder = HeadingLadder(sources: [fused], now: now);
-      ladder.start();
-      a.flushMicrotasks();
-      ladder.stop();
-      availability.complete(true);
-      a.flushMicrotasks();
-      expect(fused.starts, 0);
-      expect(ladder.current.phase, LadderPhase.idle);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test('repeated timestamps cannot satisfy preferred-source recovery', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-        silent: true,
-      );
-      final ScriptSource raw = ScriptSource(HeadingSourceKind.rawSensors, now);
-      final HeadingLadder ladder = HeadingLadder(
-        sources: [fused, raw],
-        now: now,
-        recoveryInterval: const Duration(seconds: 2),
-      );
-      ladder.start();
-      a.elapse(const Duration(milliseconds: 5300));
-      expect(fused.starts, 2);
-      final DateTime at = now();
-      fused.emit(45, at: at);
-      a.flushMicrotasks();
-      a.elapse(const Duration(seconds: 1));
-      fused.emit(45, at: at);
-      a.flushMicrotasks();
-      expect(ladder.current.source, HeadingSourceKind.rawSensors);
-      for (int i = 0; i < 12; i++) {
-        a.elapse(const Duration(milliseconds: 100));
-        fused.emit(45);
-        a.flushMicrotasks();
-      }
-      expect(fused.starts, 3);
-      ladder.dispose();
-      a.flushMicrotasks();
-    });
-  });
-  test('hung cancellation cannot block every lower rung', () {
-    fakeAsync((FakeAsync a) {
-      final DateTime Function() now = a.getClock(origin).now;
-      final ScriptSource fused = ScriptSource(
-        HeadingSourceKind.fusedCompass,
-        now,
-        silent: true,
-      )..cancellation = Completer<void>().future;
-      final ScriptSource raw = ScriptSource(HeadingSourceKind.rawSensors, now);
-      final HeadingLadder ladder = HeadingLadder(
-        sources: [fused, raw],
-        now: now,
-      );
-      ladder.start();
-      a.elapse(const Duration(milliseconds: 4300));
-      expect(ladder.current.source, HeadingSourceKind.rawSensors);
+
+      async.elapse(const Duration(milliseconds: 400));
+      expect(fused.cancels, 1, reason: 'the silent sensor must be released');
       expect(ladder.current.phase, LadderPhase.active);
+      expect(ladder.current.source, HeadingSourceKind.rawSensors);
       ladder.dispose();
-      a.flushMicrotasks();
+    });
+  });
+
+  test('skips rungs whose sensor is absent without waiting', () {
+    fakeAsync((FakeAsync async) {
+      final _FakeSource fused =
+          _FakeSource(HeadingSourceKind.fusedCompass, available: false);
+      final _FakeSource raw =
+          _FakeSource(HeadingSourceKind.rawSensors, available: false);
+      final _FakeSource gps =
+          _FakeSource(HeadingSourceKind.gpsCourse, isTrue: true);
+      final HeadingLadder ladder = HeadingLadder(
+        sources: <HeadingSource>[fused, raw, gps],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
+      );
+      final List<HeadingSample> samples = <HeadingSample>[];
+      ladder.status.listen((_) {});
+      ladder.samples.listen(samples.add);
+
+      ladder.start();
+      async.elapse(const Duration(milliseconds: 300));
+      expect(fused.starts, 0);
+      expect(raw.starts, 0);
+      expect(ladder.current.source, HeadingSourceKind.gpsCourse);
+      expect(samples.first.isTrueNorth, isTrue);
+      ladder.dispose();
+    });
+  });
+
+  test('reports exhausted when every rung fails', () {
+    fakeAsync((FakeAsync async) {
+      final HeadingLadder ladder = HeadingLadder(
+        sources: <HeadingSource>[
+          _FakeSource(HeadingSourceKind.fusedCompass, silent: true),
+          _FakeSource(HeadingSourceKind.rawSensors, available: false),
+          _FakeSource(HeadingSourceKind.relativeCalibrated, silent: true),
+        ],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
+      );
+      ladder.status.listen((_) {});
+      ladder.samples.listen((_) {});
+
+      ladder.start();
+      async.elapse(const Duration(seconds: 7));
+      expect(ladder.current.phase, LadderPhase.exhausted);
+      expect(ladder.current.source, isNull);
+      ladder.dispose();
+    });
+  });
+
+  test('a rung that goes quiet is flagged stale, restarted, then abandoned',
+      () {
+    fakeAsync((FakeAsync async) {
+      final _FakeSource fused =
+          _FakeSource(HeadingSourceKind.fusedCompass, stopAfter: 3);
+      final _FakeSource raw = _FakeSource(HeadingSourceKind.rawSensors);
+      final HeadingLadder ladder = HeadingLadder(
+        sources: <HeadingSource>[fused, raw],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
+      );
+      final List<LadderPhase> phases = <LadderPhase>[];
+      ladder.status.listen((LadderStatus s) => phases.add(s.phase));
+      ladder.samples.listen((_) {});
+
+      ladder.start();
+      // 3 samples in 300 ms, then silence: stale after 3 s more.
+      async.elapse(const Duration(milliseconds: 3400));
+      expect(phases, contains(LadderPhase.stale));
+      expect(fused.starts, 2, reason: 'restarted once after going stale');
+      expect(ladder.current.source, HeadingSourceKind.fusedCompass);
+
+      // Still silent after the restart: down the ladder.
+      async.elapse(const Duration(milliseconds: 3200));
+      expect(ladder.current.phase, LadderPhase.active);
+      expect(ladder.current.source, HeadingSourceKind.rawSensors);
+      ladder.dispose();
+    });
+  });
+
+  test('provisional samples (uncalibrated turn sensor) keep the rung', () {
+    fakeAsync((FakeAsync async) {
+      final _FakeSource relative = _FakeSource(
+        HeadingSourceKind.relativeCalibrated,
+        provisional: true,
+      );
+      final _FakeSource gps = _FakeSource(HeadingSourceKind.gpsCourse);
+      final HeadingLadder ladder = HeadingLadder(
+        sources: <HeadingSource>[relative, gps],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
+      );
+      final List<HeadingSample> samples = <HeadingSample>[];
+      ladder.status.listen((_) {});
+      ladder.samples.listen(samples.add);
+
+      ladder.start();
+      async.elapse(const Duration(seconds: 10));
+      expect(ladder.current.source, HeadingSourceKind.relativeCalibrated);
+      expect(ladder.current.phase, LadderPhase.active);
+      expect(samples.every((HeadingSample s) => s.isProvisional), isTrue);
+      expect(gps.starts, 0);
+      ladder.dispose();
+    });
+  });
+
+  test('restart goes back to the top of the ladder', () {
+    fakeAsync((FakeAsync async) {
+      final _FakeSource fused =
+          _FakeSource(HeadingSourceKind.fusedCompass, silent: true);
+      final _FakeSource raw = _FakeSource(HeadingSourceKind.rawSensors);
+      final HeadingLadder ladder = HeadingLadder(
+        sources: <HeadingSource>[fused, raw],
+        acquireTimeout: acquire,
+        staleTimeout: stale,
+      );
+      ladder.status.listen((_) {});
+      ladder.samples.listen((_) {});
+
+      ladder.start();
+      async.elapse(const Duration(seconds: 4));
+      expect(ladder.current.source, HeadingSourceKind.rawSensors);
+
+      ladder.restart();
+      async.elapse(const Duration(milliseconds: 10));
+      expect(ladder.current.source, HeadingSourceKind.fusedCompass);
+      expect(fused.starts, 2);
+      // The fused sensor wakes up this time.
+      fused.emit(120);
+      async.elapse(const Duration(milliseconds: 10));
+      expect(ladder.current.phase, LadderPhase.active);
+      expect(ladder.current.source, HeadingSourceKind.fusedCompass);
+      ladder.dispose();
     });
   });
 }

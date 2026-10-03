@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/l10n/strings.dart';
+import '../../app_providers.dart';
 import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
-import '../../widgets/localized_text.dart';
 import '../compass/compass_controller.dart';
 import '../compass/compass_providers.dart';
 import '../compass/widgets/calibration_controls.dart';
 import '../compass/widgets/compass_dial.dart';
 import '../compass/widgets/level_bubble.dart';
-import '../compass/widgets/quality_guidance.dart';
 import '../compass/widgets/source_chip.dart';
 import '../compass/widgets/sun_guidance_card.dart';
 import 'msamo_controller.dart';
@@ -42,27 +41,17 @@ class MsamoScreen extends ConsumerWidget {
     final double? declination = ref.watch(declinationProvider);
     final PerfSettings perf = ref.watch(perfSettingsProvider);
 
-    final double? heading = compass.isTravelDirection || !compass.hasHeading
-        ? null
-        : compass.trueHeadingDeg;
-    final double? liveBearing = target?.isNearTarget == true
-        ? null
-        : target?.bearingDeg;
+    final double? heading = compass.trueHeadingDeg ?? compass.magneticHeadingDeg;
+    final double? liveBearing = target?.bearingDeg;
 
     // A locked direction wins over the live bearing.
-    final double? bearing = target?.isNearTarget == true
-        ? null
-        : msamo.lockedBearingDeg ?? liveBearing;
+    final double? bearing = msamo.lockedBearingDeg ?? liveBearing;
     final bool locked = msamo.isLocked && bearing != null;
 
     final double? delta = (bearing == null || heading == null)
         ? null
         : Angles.shortestDelta(heading, bearing);
-    final bool aligned = compass.isAlignedTo(
-      target,
-      ref.read(compassClockProvider)(),
-      bearingOverride: bearing,
-    );
+    final bool aligned = delta != null && delta.abs() <= alignmentToleranceDeg;
 
     return SafeArea(
       bottom: false,
@@ -87,13 +76,6 @@ class MsamoScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-
-              QualityGuidance(
-                compass: compass,
-                target: target,
-                requiresPhoneHeading: true,
-              ),
-              const SizedBox(height: 12),
 
               // Live turn instruction.
               _TurnInstruction(
@@ -139,6 +121,14 @@ class MsamoScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
               ],
+              if (compass.waitingForWalk && !compass.isStale) ...<Widget>[
+                const InfoBanner(
+                  message: S.walkForDirection,
+                  icon: Icons.directions_walk,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(height: 12),
+              ],
               if (compass.isActive &&
                   (compass.awaitingCalibration ||
                       compass.source ==
@@ -152,11 +142,9 @@ class MsamoScreen extends ConsumerWidget {
                 Center(
                   child: CompassDial(
                     headingDeg: heading,
-                    targetBearingDeg: target?.isNearTarget == true
-                        ? null
-                        : bearing,
+                    targetBearingDeg: bearing,
                     aligned: aligned,
-                    active: compass.hasHeading && !compass.isTravelDirection,
+                    active: compass.isRunning,
                     simple: !perf.useGradients,
                     size: 232,
                   ),
@@ -201,10 +189,7 @@ class MsamoScreen extends ConsumerWidget {
                                 ? '—'
                                 : Formatters.bearingWithCardinal(
                                     GeoMath.trueToMagnetic(
-                                      bearing,
-                                      declination,
-                                    ),
-                                  ),
+                                        bearing, declination)),
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -242,28 +227,27 @@ class MsamoScreen extends ConsumerWidget {
                 variant: AppButtonVariant.outlined,
                 color: AppColors.gold,
                 foregroundColor: AppColors.gold,
-                onPressed:
-                    bearing == null ||
-                        target?.isNearTarget == true ||
-                        compass.isTravelDirection
+                onPressed: bearing == null
                     ? null
                     : () {
                         if (locked) {
                           ref.read(msamoControllerProvider.notifier).unlock();
                         } else {
-                          ref
-                              .read(msamoControllerProvider.notifier)
-                              .lock(bearing);
+                          ref.read(msamoControllerProvider.notifier).lock(bearing);
                         }
                       },
                 expand: true,
               ),
 
-              if (compass.isSunOnly ||
-                  compass.awaitingCalibration ||
-                  (compass.isActive &&
-                      !compass.hasHeading &&
-                      !compass.isTravelDirection)) ...<Widget>[
+              if (compass.needsCalibration && compass.isRunning) ...<Widget>[
+                const SizedBox(height: 12),
+                const InfoBanner(
+                  message: S.calibrateHint,
+                  icon: Icons.screen_rotation_outlined,
+                  color: AppColors.warning,
+                ),
+              ],
+              if (compass.isSunOnly || compass.awaitingCalibration) ...<Widget>[
                 const SizedBox(height: 12),
                 SunGuidanceCard(
                   sun: ref.watch(sunPositionProvider).valueOrNull,
@@ -369,11 +353,8 @@ class _TurnInstruction extends StatelessWidget {
         fill: AppColors.gold.withValues(alpha: 0.12),
         child: Column(
           children: <Widget>[
-            const Icon(
-              Icons.check_circle_outline_rounded,
-              color: AppColors.gold,
-              size: 34,
-            ),
+            const Icon(Icons.check_circle_outline_rounded,
+                color: AppColors.gold, size: 34),
             const SizedBox(height: 8),
             LocalizedText(
               S.msamoAligned,
@@ -388,22 +369,10 @@ class _TurnInstruction extends StatelessWidget {
       );
     }
 
-    if (degrees <= 3) {
-      return _Shell(
-        color: AppColors.warning,
-        child: LocalizedText(
-          S.alignmentUnconfirmed,
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
     final bool right = delta > 0;
     final bool around = degrees > 150;
-    final Bi instruction = around
-        ? S.turnAround(degrees)
-        : S.turnBy(degrees, toRight: right);
+    final Bi instruction =
+        around ? S.turnAround(degrees) : S.turnBy(degrees, toRight: right);
 
     return _Shell(
       color: AppColors.accent.withValues(alpha: 0.55),

@@ -45,12 +45,12 @@ class Bi {
 
   /// The text in a specific language (for tests and previews).
   String textIn(AppLanguage language) => L10n.resolve(
-    en: en,
-    zu: zu,
-    key: key,
-    args: _argsIn(language),
-    language: language,
-  );
+        en: en,
+        zu: zu,
+        key: key,
+        args: _argsIn(language),
+        language: language,
+      );
 
   Map<String, String>? _argsIn(AppLanguage language) {
     final Map<String, Object>? values = args;
@@ -106,55 +106,43 @@ abstract final class S {
 
   // ----------------------------------------------------------------- compass
 
-  static const Bi startCompass = Bi(
-    'Start compass',
-    'Qala ikhompasi',
-    key: 'btn_start',
-  );
+  static const Bi startCompass =
+      Bi('Start compass', 'Qala ikhompasi', key: 'btn_start');
   static const Bi startToBegin = Bi(
     'Start the compass to begin',
     'Qala ikhompasi ukuze uqale',
     key: 'state_start',
   );
-  static const Bi locationNotSet = Bi(
-    'Location: not set',
-    'Indawo: ayikabekwa',
-    key: 'loc_unset',
-  );
-  static const Bi compassOff = Bi(
-    'Compass: off',
-    'Ikhompasi: ivaliwe',
-    key: 'cmp_off',
-  );
-  static const Bi compassOn = Bi(
-    'Compass: on',
-    'Ikhompasi: ivuliwe',
-    key: 'compass_on',
-  );
+  static const Bi locationNotSet =
+      Bi('Location: not set', 'Indawo: ayikabekwa', key: 'loc_unset');
+  static const Bi compassOff =
+      Bi('Compass: off', 'Ikhompasi: ivaliwe', key: 'cmp_off');
+  static const Bi compassOn =
+      Bi('Compass: on', 'Ikhompasi: ivuliwe', key: 'compass_on');
 
   /// "Location: 26.2041° S, 28.0473° E" on the status line.
   static Bi locationValue(String point) => Bi(
-    'Location: $point',
-    'Indawo: $point',
-    key: 'loc_value',
-    args: <String, Object>{'p': point},
-  );
+        'Location: $point',
+        'Indawo: $point',
+        key: 'loc_value',
+        args: <String, Object>{'p': point},
+      );
 
   /// "Compass: 318° true" on the status line.
   static Bi compassTrue(String bearing) => Bi(
-    'Compass: $bearing true',
-    'Ikhompasi: $bearing iqiniso',
-    key: 'compass_true',
-    args: <String, Object>{'n': bearing},
-  );
+        'Compass: $bearing true',
+        'Ikhompasi: $bearing iqiniso',
+        key: 'compass_true',
+        args: <String, Object>{'n': bearing},
+      );
 
   /// "Compass: 298° magnetic" on the status line.
   static Bi compassMagnetic(String bearing) => Bi(
-    'Compass: $bearing magnetic',
-    'Ikhompasi: $bearing kazibuthe',
-    key: 'compass_magnetic',
-    args: <String, Object>{'n': bearing},
-  );
+        'Compass: $bearing magnetic',
+        'Ikhompasi: $bearing kazibuthe',
+        key: 'compass_magnetic',
+        args: <String, Object>{'n': bearing},
+      );
 
   static const Bi compassHelp = Bi(
     'The arrow points to Ekuphumuleni. When it sits under the marker at the '
@@ -167,19 +155,19 @@ abstract final class S {
 
   /// "Bearing 318° NW" under the dial.
   static Bi bearingValue(String bearing) => Bi(
-    'Bearing $bearing',
-    'Ukubheka $bearing',
-    key: 'bearing_value',
-    args: <String, Object>{'b': bearing},
-  );
+        'Bearing $bearing',
+        'Ukubheka $bearing',
+        key: 'bearing_value',
+        args: <String, Object>{'b': bearing},
+      );
 
   /// Spoken description of the compass dial.
   static Bi dialLabel(int bearingDeg) => Bi(
-    'Compass dial. Bearing to Ekuphumuleni $bearingDeg degrees.',
-    'Ikhompasi. Ukubheka e-Ekuphumuleni ngamadigri angu-$bearingDeg.',
-    key: 'dial_label',
-    args: <String, Object>{'n': '$bearingDeg'},
-  );
+        'Compass dial. Bearing to Ekuphumuleni $bearingDeg degrees.',
+        'Ikhompasi. Ukubheka e-Ekuphumuleni ngamadigri angu-$bearingDeg.',
+        key: 'dial_label',
+        args: <String, Object>{'n': '$bearingDeg'},
+      );
   static const Bi dialTurnHint = Bi(
     'Turn to bring the needle to the marker.',
     'Phenduka kuze umcibisholo ufike ophawini.',
@@ -192,30 +180,24 @@ abstract final class S {
     'Ukuphakama kwelanga · ngaphezu komkhathizwe',
     key: 'sun_height',
   );
-  static const Bi facingSun = Bi(
-    'Facing the sun',
-    'Ubheke ilanga',
-    key: 'sun_facing',
-  );
+  static const Bi facingSun =
+      Bi('Facing the sun', 'Ubheke ilanga', key: 'sun_facing');
   static const Bi stickShadow = Bi(
     "Using a stick's shadow",
     'Ukusebenzisa isithunzi sentonga',
     key: 'sun_shadow',
   );
-  static const Bi bearingTrue = Bi(
-    'Bearing (true)',
-    'Ukubheka',
-    key: 'ro_bearing',
-  );
+  static const Bi bearingTrue =
+      Bi('Bearing (true)', 'Ukubheka', key: 'ro_bearing');
   static const Bi distance = Bi('Distance', 'Ibanga', key: 'ro_dist');
 
   /// "Distance: 412 km".
   static Bi distanceValue(String distance) => Bi(
-    'Distance: $distance',
-    'Ibanga: $distance',
-    key: 'distance_value',
-    args: <String, Object>{'d': distance},
-  );
+        'Distance: $distance',
+        'Ibanga: $distance',
+        key: 'distance_value',
+        args: <String, Object>{'d': distance},
+      );
   static const Bi magneticBearing = Bi(
     'Magnetic bearing · hand compass',
     'Ukubheka kazibuthe · ikhompasi yesandla',
@@ -236,11 +218,8 @@ abstract final class S {
     'Inyakatho kazibuthe ingasempumalanga yenyakatho yangempela',
     key: 'decl_east',
   );
-  static const Bi yourLocation = Bi(
-    'Your location',
-    'Indawo yakho',
-    key: 'ro_loc',
-  );
+  static const Bi yourLocation =
+      Bi('Your location', 'Indawo yakho', key: 'ro_loc');
 
   static const Bi notSetHint = Bi(
     'Not set · Tap Start, or set it under Location',
@@ -251,16 +230,10 @@ abstract final class S {
   // Readout values.
   static const Bi yes = Bi('Yes', 'Yebo', key: 'yes');
   static const Bi no = Bi('No', 'Cha', key: 'no');
-  static const Bi belowHorizon = Bi(
-    'Below horizon',
-    'Ngaphansi komkhathizwe',
-    key: 'below_horizon',
-  );
-  static const Bi aboveHorizon = Bi(
-    'above horizon',
-    'ngaphezu komkhathizwe',
-    key: 'above_horizon',
-  );
+  static const Bi belowHorizon =
+      Bi('Below horizon', 'Ngaphansi komkhathizwe', key: 'below_horizon');
+  static const Bi aboveHorizon =
+      Bi('above horizon', 'ngaphezu komkhathizwe', key: 'above_horizon');
   static const Bi yesFacingSun = Bi(
     'Yes, you are facing the sun',
     'Yebo, ubheke ilanga',
@@ -283,11 +256,8 @@ abstract final class S {
     );
   }
 
-  static const Bi sunBehind = Bi(
-    'The sun is behind you',
-    'Ilanga lingemuva kwakho',
-    key: 'sun_behind',
-  );
+  static const Bi sunBehind =
+      Bi('The sun is behind you', 'Ilanga lingemuva kwakho', key: 'sun_behind');
   static const Bi sunUnknown = Bi(
     'Start the compass to know',
     'Qala ikhompasi ukuze wazi',
@@ -306,8 +276,8 @@ abstract final class S {
 
   // States and warnings.
   static const Bi calibrateHint = Bi(
-    'Calibration needed: move away from metal and magnetic accessories, then gently rotate the phone through a figure-eight. This cannot correct nearby magnetic interference.',
-    'Kudingeka ukulinganisa: suka kude nensimbi nozibuthe, bese zungezisa ifoni njengo-8.',
+    'Calibrate: move the phone in a figure-8',
+    'Linganisa: zungezisa ifoni njengo-8',
     key: 'calib',
   );
   static const Bi noSensor = Bi(
@@ -325,21 +295,12 @@ abstract final class S {
     'Inzwa yekhompasi ayitholakali',
     key: 'sensor_unavailable',
   );
-  static const Bi waitingForHeading = Bi(
-    'Waiting for a heading…',
-    'Kulinde isiqondiso…',
-    key: 'turn_wait',
-  );
-  static const Bi aligned = Bi(
-    'Facing Ekuphumuleni',
-    'Ubheke e-Ekuphumuleni',
-    key: 'facing',
-  );
-  static const Bi notAvailable = Bi(
-    'Not available',
-    'Ayitholakali',
-    key: 'not_available',
-  );
+  static const Bi waitingForHeading =
+      Bi('Waiting for a heading…', 'Kulinde isiqondiso…', key: 'turn_wait');
+  static const Bi aligned =
+      Bi('Facing Ekuphumuleni', 'Ubheke e-Ekuphumuleni', key: 'facing');
+  static const Bi notAvailable =
+      Bi('Not available', 'Ayitholakali', key: 'not_available');
   static const Bi compassErrorBody = Bi(
     'The compass sensor stopped with an error. Tap Retry sensors, or stop the '
         'compass and start it again.',
@@ -373,11 +334,8 @@ abstract final class S {
     'Qhubeka uphenduka kuze kube semaphakathi',
     key: 'msamo_not_aligned',
   );
-  static const Bi lockDirection = Bi(
-    'Lock this direction',
-    'Khiya lesi siqondiso',
-    key: 'lock_direction',
-  );
+  static const Bi lockDirection =
+      Bi('Lock this direction', 'Khiya lesi siqondiso', key: 'lock_direction');
   static const Bi unlockDirection = Bi('Unlock', 'Vula', key: 'unlock');
   static const Bi lockedNote = Bi(
     'Direction locked. The reading is frozen so you can mark the position.',
@@ -407,34 +365,25 @@ abstract final class S {
 
   /// "Turn around 175°".
   static Bi turnAround(int deg) => Bi(
-    'Turn around $deg°',
-    'Phenduka ngo-$deg°',
-    key: 'turn_around',
-    args: <String, Object>{'n': '$deg'},
-  );
+        'Turn around $deg°',
+        'Phenduka ngo-$deg°',
+        key: 'turn_around',
+        args: <String, Object>{'n': '$deg'},
+      );
 
   // ---------------------------------------------------------------- location
 
-  static const Bi useMyLocation = Bi(
-    'Use my location',
-    'Sebenzisa indawo yami',
-    key: 'btn_gps',
-  );
+  static const Bi useMyLocation =
+      Bi('Use my location', 'Sebenzisa indawo yami', key: 'btn_gps');
   static const Bi enterManually = Bi(
     'Enter coordinates manually',
     'Faka izixhumanisi ngesandla',
     key: 'coords_title',
   );
-  static const Bi pickFromCentres = Bi(
-    'Pick from centres',
-    'Khetha esikhungweni',
-    key: 'pick_centre',
-  );
-  static const Bi returnToGps = Bi(
-    'Return to live GPS',
-    'Buyela ku-GPS ebukhoma',
-    key: 'return_gps',
-  );
+  static const Bi pickFromCentres =
+      Bi('Pick from centres', 'Khetha esikhungweni', key: 'pick_centre');
+  static const Bi returnToGps =
+      Bi('Return to live GPS', 'Buyela ku-GPS ebukhoma', key: 'return_gps');
   static const Bi latitude = Bi('Latitude', 'I-latitude', key: 'latitude');
   static const Bi longitude = Bi('Longitude', 'I-longitude', key: 'longitude');
   static const Bi accuracy = Bi('Accuracy', 'Ukunemba', key: 'guide_acc');
@@ -442,38 +391,22 @@ abstract final class S {
   static const Bi updated = Bi('Updated', 'Kubuyekezwe', key: 'updated');
   static const Bi source = Bi('Source', 'Umthombo', key: 'source');
   static const Bi place = Bi('Place', 'Indawo', key: 'place');
-  static const Bi sourceGps = Bi(
-    'Live GPS',
-    'I-GPS ebukhoma',
-    key: 'src_live_gps',
-  );
-  static const Bi sourceManual = Bi(
-    'Saved location',
-    'Indawo egciniwe',
-    key: 'src_saved',
-  );
+  static const Bi sourceGps = Bi('Live GPS', 'I-GPS ebukhoma', key: 'src_live_gps');
+  static const Bi sourceManual =
+      Bi('Saved location', 'Indawo egciniwe', key: 'src_saved');
 
   /// Label stored with coordinates typed in by hand.
-  static const Bi manualEntry = Bi(
-    'Manual entry',
-    'Ifakwe ngesandla',
-    key: 'manual_entry',
-  );
-  static const Bi currentPosition = Bi(
-    'Current position',
-    'Indawo yamanje',
-    key: 'current_position',
-  );
+  static const Bi manualEntry =
+      Bi('Manual entry', 'Ifakwe ngesandla', key: 'manual_entry');
+  static const Bi currentPosition =
+      Bi('Current position', 'Indawo yamanje', key: 'current_position');
   static const Bi manualInUse = Bi(
     'A saved location is being used for all bearings and distances.',
     'Indawo egciniwe isetshenziselwa zonke iziqondiso namabanga.',
     key: 'manual_in_use',
   );
-  static const Bi openSettings = Bi(
-    'Open settings',
-    'Vula izilungiselelo',
-    key: 'open_settings',
-  );
+  static const Bi openSettings =
+      Bi('Open settings', 'Vula izilungiselelo', key: 'open_settings');
   static const Bi locationServicesOff = Bi(
     'Location services are switched off. Turn them on to use the compass.',
     'Izinsiza zendawo zivaliwe. Zivule ukuze usebenzise ikhompasi.',
@@ -519,22 +452,19 @@ abstract final class S {
 
   /// "Location saved · Soweto".
   static Bi savedNamed(String name) => Bi(
-    'Location saved · $name',
-    'Indawo igciniwe · $name',
-    key: 'saved_named',
-    args: <String, Object>{'name': name},
-  );
+        'Location saved · $name',
+        'Indawo igciniwe · $name',
+        key: 'saved_named',
+        args: <String, Object>{'name': name},
+      );
   static const Bi save = Bi('Save', 'Gcina', key: 'save');
   static const Bi cancel = Bi('Cancel', 'Khansela', key: 'cancel');
   static const Bi locate = Bi('Locating…', 'Kuthungathwa…', key: 'gps_finding');
 
   // ----------------------------------------------------------------- centres
 
-  static const Bi searchCentre = Bi(
-    'Search a centre or town',
-    'Sesha isikhungo',
-    key: 'search_ph',
-  );
+  static const Bi searchCentre =
+      Bi('Search a centre or town', 'Sesha isikhungo', key: 'search_ph');
   static const Bi nearest = Bi('Nearest', 'Eseduze', key: 'btn_near');
   static const Bi allCentres = Bi(
     'All centres, grouped by region',
@@ -551,26 +481,17 @@ abstract final class S {
   );
   static const Bi mapButton = Bi('Map', 'Imephu', key: 'map');
   static const Bi callButton = Bi('Call', 'Shayela', key: 'call');
-  static const Bi directionsButton = Bi(
-    'Directions',
-    'Izikhombisi-ndlela',
-    key: 'directions',
-  );
+  static const Bi directionsButton =
+      Bi('Directions', 'Izikhombisi-ndlela', key: 'directions');
   static const Bi noResults = Bi(
     'No centre matches your search',
     'Asikho isikhungo esitholakalayo',
     key: 'no_match',
   );
-  static const Bi noPhone = Bi(
-    'No phone number on file',
-    'Ayikho inombolo yocingo',
-    key: 'no_phone',
-  );
-  static const Bi noAddress = Bi(
-    'Address to be added',
-    'Ikheli lizokwengezwa',
-    key: 'no_address',
-  );
+  static const Bi noPhone =
+      Bi('No phone number on file', 'Ayikho inombolo yocingo', key: 'no_phone');
+  static const Bi noAddress =
+      Bi('Address to be added', 'Ikheli lizokwengezwa', key: 'no_address');
   static const Bi offlineMap = Bi(
     'The map needs an internet connection. The list of centres below still '
         'works offline.',
@@ -586,24 +507,18 @@ abstract final class S {
   static const Bi retry = Bi('Retry', 'Zama futhi', key: 'retry');
   static const Bi zoomIn = Bi('Zoom in', 'Sondeza', key: 'zoom_in');
   static const Bi zoomOut = Bi('Zoom out', 'Hlehlisa', key: 'zoom_out');
-  static const Bi nearestFound = Bi(
-    'Nearest centre',
-    'Isikhungo esiseduze',
-    key: 'nearest_centre',
-  );
+  static const Bi nearestFound =
+      Bi('Nearest centre', 'Isikhungo esiseduze', key: 'nearest_centre');
 
   /// "Nearest centre: Soweto · 12 km".
   static Bi nearestCentreValue(String centre, String distance) => Bi(
-    'Nearest centre: $centre · $distance',
-    'Isikhungo esiseduze: $centre · $distance',
-    key: 'nearest_centre_value',
-    args: <String, Object>{'c': centre, 'd': distance},
-  );
-  static const Bi loadingCentres = Bi(
-    'Loading centres…',
-    'Kulayishwa izikhungo…',
-    key: 'c_loading',
-  );
+        'Nearest centre: $centre · $distance',
+        'Isikhungo esiseduze: $centre · $distance',
+        key: 'nearest_centre_value',
+        args: <String, Object>{'c': centre, 'd': distance},
+      );
+  static const Bi loadingCentres =
+      Bi('Loading centres…', 'Kulayishwa izikhungo…', key: 'c_loading');
   static const Bi centresFailed = Bi(
     'The centres file could not be read.',
     'Ifayela lezikhungo alikwazanga ukufundwa.',
@@ -617,35 +532,19 @@ abstract final class S {
 
   // ------------------------------------------------------------------- guide
 
-  static const Bi coordinates = Bi(
-    'Coordinates',
-    'Izixhumanisi',
-    key: 'coordinates',
-  );
-
+  static const Bi coordinates =
+      Bi('Coordinates', 'Izixhumanisi', key: 'coordinates');
   /// Degrees / minutes / seconds.
   static const Bi dmsLabel = Bi('DMS', 'DMS', key: 'dms');
   static const Bi decimalLabel = Bi('Decimal', 'Amadesimali', key: 'decimal');
-  static const Bi howToUse = Bi(
-    'How to use it',
-    'Indlela yokuyisebenzisa',
-    key: 'guide_how',
-  );
-  static const Bi accuracyHeading = Bi(
-    'Accuracy',
-    'Ukunemba',
-    key: 'guide_acc',
-  );
-  static const Bi aboutHeading = Bi(
-    'About this app',
-    'Mayelana nalolu hlelo',
-    key: 'about_heading',
-  );
-  static const Bi purposeHeading = Bi(
-    'Purpose',
-    'Inhloso',
-    key: 'purpose_heading',
-  );
+  static const Bi howToUse =
+      Bi('How to use it', 'Indlela yokuyisebenzisa', key: 'guide_how');
+  static const Bi accuracyHeading =
+      Bi('Accuracy', 'Ukunemba', key: 'guide_acc');
+  static const Bi aboutHeading =
+      Bi('About this app', 'Mayelana nalolu hlelo', key: 'about_heading');
+  static const Bi purposeHeading =
+      Bi('Purpose', 'Inhloso', key: 'purpose_heading');
 
   /// One line describing what Ekuphumuleni is.
   static const Bi ekuphumuleniDescription = Bi(
@@ -695,14 +594,39 @@ abstract final class S {
   );
 
   static const Bi accuracyBody = Bi(
-    'The app corrects magnetic north to true north with WMM2025, using your location, altitude and date, only during the model validity period (2025–2029). This corrects magnetic declination, not nearby interference. A smooth or steady arrow is not proof of accuracy. Remove magnetic cases or mounts and move away from steel, speakers and charging equipment. Reported sensor errors are estimates, not guarantees. Precision alignment requires fresh reliable sensor and location data, a steady phone and an uncertainty budget within 3°. Unknown accuracy, temporary gyro direction and GPS travel direction cannot confirm phone alignment. Some phones cannot provide an absolute heading; daylight guidance and hand-compass bearings remain alternatives. Bearings are initial great-circle bearings; distances are in kilometres.',
-    'Uhlelo lulungisa inyakatho kazibuthe nge-WMM2025 ngesikhathi esivumelekile (2025–2029). Lokhu akulungisi ukuphazamiseka okuseduze. Umcibisholo ozinzile awuqinisekisi ukunemba. Gcina ifoni kude nensimbi nozibuthe. I-GPS ikhombisa isiqondiso sokuhamba, hhayi lapho ifoni ibheke khona.',
+    'Phones read magnetic north, not true north. Across Southern Africa '
+        'magnetic north lies roughly 17° to 28° west of true north — about 20° '
+        'at Johannesburg and about 27° at Durban — and it drifts a little every '
+        'year. TSHK Compass corrects for this with the World Magnetic Model '
+        '(WMM 2025), using your position, altitude and the date, so the bearing '
+        'shown is a true bearing. If the arrow drifts, move the phone in a '
+        'figure-8 to calibrate the sensor, and keep it away from metal, magnets '
+        'and speakers. Bearings are great-circle (initial) bearings and '
+        'distances are given in kilometres.',
+    'Omakhalekhukhwini bafunda inyakatho kazibuthe, hhayi inyakatho yangempela. '
+        'ENingizimu ye-Afrika inyakatho kazibuthe ingaba ngu-17° kuya ku-28° '
+        'entshonalanga yenyakatho yangempela — cishe u-20° eGoli kanye no-27° '
+        'eThekwini — futhi iyashintsha kancane unyaka nonyaka. I-TSHK Compass '
+        'iyakulungisa lokhu nge-World Magnetic Model (WMM 2025), isebenzisa '
+        'indawo yakho, ukuphakama nosuku, ngakho isiqondiso esibonisiwe '
+        'siyiqiniso. Uma umcibisholo unganembile, zungezisa ifoni njengo-8 '
+        'ukuyilinganisa, futhi uyigcine kude nensimbi, ozibuthe nezipikha. '
+        'Iziqondiso ziyiziqondiso ezinkulu (great-circle) futhi amabanga '
+        'avezwa ngamakhilomitha.',
     key: 'accuracy_body',
   );
 
   static const Bi permissionsNote = Bi(
-    'The app requests location for target bearings and GPS travel direction. iOS may also request motion access for orientation. Android motion sensors normally need no runtime permission. Location and sensors are released when the compass goes into the background; no sensor readings are uploaded.',
-    'Uhlelo lucela indawo ukuze luthole isiqondiso. I-iOS ingacela imvume yokunyakaza. Akukho ukufundwa kwezinzwa okuthunyelwayo.',
+    'On iPhone, the first time you tap Start compass the system asks for '
+        'location access and for motion and orientation access. Location is '
+        'used only while the app is open, and only to work out the bearing and '
+        'distance to Ekuphumuleni. On Android, location and the motion sensors '
+        'are requested in the same way; nothing is stored or sent anywhere.',
+    'Ku-iPhone, uma ucindezela u-Qala ikhompasi okokuqala, uhlelo lucela '
+        'imvume yendawo kanye neyokunyakaza. Indawo isetshenziswa kuphela '
+        'uma uhlelo luvuliwe, futhi kuphela ukuthola isiqondiso nebanga '
+        'lokuya e-Ekuphumuleni. Ku-Android, indawo nezinzwa zokunyakaza '
+        'kucelwa ngendlela efanayo; akukho okugcinwa noma okuthunyelwayo.',
     key: 'permissions_note',
   );
 
@@ -721,11 +645,8 @@ abstract final class S {
   // ---------------------------------------------------------- shared widgets
 
   static const Bi close = Bi('Close', 'Vala', key: 'close');
-  static const Bi ekuphumuleni = Bi(
-    'Ekuphumuleni',
-    'Ekuphumuleni',
-    key: 'ekuphumuleni',
-  );
+  static const Bi ekuphumuleni =
+      Bi('Ekuphumuleni', 'Ekuphumuleni', key: 'ekuphumuleni');
   static const Bi spiritualCapital = Bi(
     'Spiritual capital',
     'Inhlokodolobha yomoya',
@@ -735,37 +656,21 @@ abstract final class S {
   // ------------------------------------------------------- compass engine
 
   /// Status chip: which rung of the ladder is driving the dial.
-  static const Bi srcFused = Bi(
-    'Compass sensor',
-    'Inzwa yekhompasi',
-    key: 'src_fused',
-  );
-  static const Bi srcRaw = Bi(
-    'Raw sensors',
-    'Izinzwa eziluhlaza',
-    key: 'src_raw',
-  );
+  static const Bi srcFused =
+      Bi('Compass sensor', 'Inzwa yekhompasi', key: 'src_fused');
+  static const Bi srcRaw =
+      Bi('Raw sensors', 'Izinzwa eziluhlaza', key: 'src_raw');
   static const Bi srcRelative = Bi(
     'Turn sensor + calibration',
     'Inzwa yokuphenduka + ukulungiswa',
     key: 'src_relative',
   );
-  static const Bi srcGps = Bi(
-    'GPS travel direction',
-    'Isiqondiso sokuhamba nge-GPS',
-    key: 'src_gps',
-  );
-  static const Bi srcSun = Bi(
-    'Sun guidance',
-    'Isiqondiso selanga',
-    key: 'src_sun',
-  );
+  static const Bi srcGps = Bi('GPS (walking)', 'I-GPS (uhamba)', key: 'src_gps');
+  static const Bi srcSun =
+      Bi('Sun guidance', 'Isiqondiso selanga', key: 'src_sun');
 
-  static const Bi compassOnShort = Bi(
-    'Compass: on',
-    'Ikhompasi: iyasebenza',
-    key: 'compass_on',
-  );
+  static const Bi compassOnShort =
+      Bi('Compass: on', 'Ikhompasi: iyasebenza', key: 'compass_on');
   static const Bi compassWaiting = Bi(
     'Compass: waiting for sensor…',
     'Ikhompasi: ilinde inzwa',
@@ -791,153 +696,36 @@ abstract final class S {
     'Ikhompasi: idinga indawo',
     key: 'compass_needs_loc',
   );
-  static const Bi compassError = Bi(
-    'Compass: error',
-    'Ikhompasi: iphutha',
-    key: 'compass_error',
-  );
+  static const Bi compassError =
+      Bi('Compass: error', 'Ikhompasi: iphutha', key: 'compass_error');
   static const Bi compassPaused = Bi(
     'Move the phone to wake the compass',
     'Nyakazisa ifoni ukuze uvuse ikhompasi',
     key: 'compass_paused',
   );
   static const Bi walkForDirection = Bi(
-    'Walk steadily outdoors to establish travel direction; stop and the arrow clears.',
-    'Hamba ngaphandle ukuze uthole isiqondiso sokuhamba. Uma uma, umcibisholo uyasuswa.',
+    'Walk a few steps to get direction',
+    'Hamba izinyathelo ezimbalwa',
     key: 'walk_for_direction',
   );
-  static const Bi stopCompass = Bi(
-    'Stop compass',
-    'Misa ikhompasi',
-    key: 'stop_compass',
-  );
-  static const Bi retryCompass = Bi(
-    'Retry sensors',
-    'Zama izinzwa futhi',
-    key: 'retry_sensors',
-  );
-
-  // Reliability and explicit direction modes.
-  static const Bi phoneHeadingMode = Bi(
-    'Phone direction',
-    'Isiqondiso sefoni',
-    key: 'phone_heading_mode',
-  );
-  static const Bi travelDirectionMode = Bi(
-    'Travel direction (GPS)',
-    'Isiqondiso sokuhamba (GPS)',
-    key: 'travel_direction_mode',
-  );
-  static const Bi travelDirectionNotice = Bi(
-    'GPS shows where you are moving, not where the phone points. Keep moving outdoors. Phone alignment cannot be confirmed in this mode.',
-    'I-GPS ikhombisa lapho uya khona, hhayi lapho ifoni ibheke khona. Qhubeka uhamba ngaphandle.',
-    key: 'travel_direction_notice',
-  );
-  static const Bi headingAccuracy = Bi(
-    'Reported direction accuracy',
-    'Ukunemba okubikiwe',
-    key: 'heading_accuracy',
-  );
-  static const Bi accuracyUnknown = Bi(
-    'Accuracy unknown — precision alignment cannot be confirmed.',
-    'Ukunemba akwaziwa — ukuqondana okunembile akukwazi ukuqinisekiswa.',
-    key: 'accuracy_unknown',
-  );
-  static const Bi directionUnreliable = Bi(
-    'No reliable direction',
-    'Asikho isiqondiso esithembekile',
-    key: 'direction_unreliable',
-  );
-  static const Bi directionApproximate = Bi(
-    'Approximate direction',
-    'Isiqondiso esilinganisiwe',
-    key: 'direction_approximate',
-  );
-  static const Bi magneticInterference = Bi(
-    'Possible magnetic interference. Remove magnetic cases or mounts and move away from steel, speakers and charging equipment. Calibration cannot remove nearby interference.',
-    'Kungase kube nokuphazamiseka kukazibuthe. Susa ikesi elinozibuthe bese uya kude nensimbi nezipikha.',
-    key: 'magnetic_interference',
-  );
-  static const Bi excessiveMotion = Bi(
-    'Hold the phone still while checking direction. Strong movement makes tilt compensation unreliable.',
-    'Bamba ifoni inganyakazi uma uhlola isiqondiso.',
-    key: 'excessive_motion',
-  );
-  static const Bi headingHoldLevel = Bi(
-    'Hold the phone level, with its top edge pointing ahead. This sensor cannot reliably determine direction in the current position.',
-    'Bamba ifoni ithe bha, ingxenye engenhla ibheke phambili.',
-    key: 'heading_hold_level',
-  );
-  static const Bi gyroDriftWarning = Bi(
-    'Temporary, user-set direction — the turn sensor drifts. Set again at least every minute; pausing or losing sensor data clears the calibration.',
-    'Lesi siqondiso singesesikhashana. Beka futhi njalo ngomzuzu; ukuma kusula ukulungiswa.',
-    key: 'gyro_drift_warning',
-  );
-  static const Bi weakMagneticField = Bi(
-    'The horizontal magnetic field is too weak for a trustworthy compass. Use daylight guidance or GPS travel direction instead.',
-    'Uzibuthe womhlaba ubuthakathaka lapha. Sebenzisa ilanga noma i-GPS.',
-    key: 'weak_magnetic_field',
-  );
-  static const Bi magneticModelExpired = Bi(
-    'The bundled magnetic model is outside its validity period. Update the app before relying on true-north correction. GPS and daylight guidance remain available.',
-    'Imodeli kazibuthe isiphelelwe isikhathi. Buyekeza uhlelo.',
-    key: 'magnetic_model_expired',
-  );
-  static const Bi locationApproximateDirection = Bi(
-    'This location is approximate or manually selected. The bearing is guidance, not a precision-alignment confirmation. Use a fresh, precise GPS fix when possible.',
-    'Le ndawo ilinganisiwe noma ikhethwe ngesandla. Sebenzisa i-GPS enembile uma kungenzeka.',
-    key: 'location_approximate_direction',
-  );
-  static const Bi locationStaleDirection = Bi(
-    'The location is old or its accuracy is unknown. Refresh your location before relying on precise target direction.',
-    'Indawo indala noma ukunemba kwayo akwaziwa. Buyekeza indawo yakho.',
-    key: 'location_stale_direction',
-  );
-  static const Bi nearDestination = Bi(
-    'You are at or near the destination within location uncertainty. A precise bearing is no longer meaningful.',
-    'Useduze nendawo oya kuyo. Isiqondiso esinembile asisasebenzi lapha.',
-    key: 'near_destination',
-  );
-  static const Bi alignmentUnconfirmed = Bi(
-    'Arrow near target — accuracy not confirmed',
-    'Umcibisholo useduze — ukunemba akuqinisekisiwe',
-    key: 'alignment_unconfirmed',
-  );
-  static const Bi sunAnchorUnavailable = Bi(
-    'Sun guidance is unavailable near the horizon or overhead. Check daylight, the phone clock and your location; otherwise use a hand compass.',
-    'Ilanga kufanele libe ngaphezu komkhathizwe, lingabi phezu kwekhanda. Hlola isikhathi nendawo, noma usebenzise ikhompasi yesandla.',
-    key: 'sun_anchor_unavailable',
-  );
-  static const Bi sunSafety = Bi(
-    'Never look directly at the sun. A stick’s shadow points away from it. To set a sun direction, keep the phone flat and still and point its screen-top edge opposite the shadow.',
-    'Ungabuki ilanga ngqo. Isithunzi sikhomba kude nelanga. Bamba ifoni ithe bha inganyakazi, ukhombe uhlangothi olungenhla kwesikrini ngakolunye uhlangothi lwesithunzi.',
-    key: 'sun_safety',
-  );
-  static const Bi targetDirectionUnavailable = Bi(
-    'Target direction unavailable.',
-    'Isiqondiso sendawo asitholakali.',
-    key: 'target_direction_unavailable',
-  );
-  static const Bi headingCalibrationFailed = Bi(
-    'No fresh, steady turn-sensor reading. Hold the phone level and still, then try again.',
-    'Bamba ifoni ithe bha inganyakazi, bese uzama futhi.',
-    key: 'heading_calibration_failed',
-  );
-  static const Bi phoneHeadingRequired = Bi(
-    'Use Phone direction to align the msamo. GPS travel direction does not tell us where the phone or msamo points.',
-    'Sebenzisa isiqondiso sefoni ukuqondisa umsamo, hhayi i-GPS.',
-    key: 'phone_heading_required',
-  );
+  static const Bi stopCompass =
+      Bi('Stop compass', 'Misa ikhompasi', key: 'stop_compass');
+  static const Bi retryCompass =
+      Bi('Retry sensors', 'Zama izinzwa futhi', key: 'retry_sensors');
 
   // One-tap calibration.
   static const Bi calibrationTitle = Bi(
-    'Set a temporary direction',
+    'Set the direction once',
     'Beka isiqondiso kanye',
     key: 'calibration_title',
   );
   static const Bi calibrationBody = Bi(
-    'This phone can track turns but has no trustworthy north reference. Hold it level and still, align its top edge using a sun/shadow reference or a separate hand compass, then tap Set. The direction is temporary, not a verified accuracy bound.',
-    'Le foni ilandelela ukuphenduka kodwa ayinayo inyakatho ethembekile. Yibambe ithe bha inganyakazi bese ubeka isiqondiso.',
+    'This phone can feel how far it turns but not where north is. Point the '
+        'top of the phone at the sun and tap Set, or point it at north with a '
+        'hand compass and tap Set.',
+    'Le foni izwa ukuthi iphenduke kangakanani kodwa ayazi ukuthi inyakatho '
+        'ikuphi. Khomba ilanga ngengxenye engenhla yefoni ucindezele u-Beka, '
+        'noma ukhombe enyakatho ngekhompasi yesandla ucindezele u-Beka.',
     key: 'calibration_body',
   );
   static const Bi setToSun = Bi(
@@ -950,33 +738,20 @@ abstract final class S {
     'Beka: ifoni ibheke enyakatho',
     key: 'set_to_north',
   );
-  static const Bi calibratedToSun = Bi(
-    'Calibrated to the sun',
-    'Kulungiswe ngelanga',
-    key: 'calibrated_sun',
-  );
+  static const Bi calibratedToSun =
+      Bi('Calibrated to the sun', 'Kulungiswe ngelanga', key: 'calibrated_sun');
   static const Bi calibratedToNorth = Bi(
     'Calibrated to magnetic north',
     'Kulungiswe ngenyakatho kazibuthe',
     key: 'calibrated_north',
   );
-  static const Bi recalibrate = Bi(
-    'Set again',
-    'Beka futhi',
-    key: 'recalibrate',
-  );
-  static const Bi sunBelowHorizonShort = Bi(
-    'Sun below the horizon',
-    'Ilanga selishonile',
-    key: 'sun_night',
-  );
+  static const Bi recalibrate = Bi('Set again', 'Beka futhi', key: 'recalibrate');
+  static const Bi sunBelowHorizonShort =
+      Bi('Sun below the horizon', 'Ilanga selishonile', key: 'sun_night');
 
   // Sun-only guidance.
-  static const Bi sunGuidanceTitle = Bi(
-    'Use the sun',
-    'Sebenzisa ilanga',
-    key: 'sun_title',
-  );
+  static const Bi sunGuidanceTitle =
+      Bi('Use the sun', 'Sebenzisa ilanga', key: 'sun_title');
   static const Bi sunNow = Bi('Sun now', 'Ilanga manje', key: 'sun_now');
   static const Bi sunWhyNone = Bi(
     'This phone has no working compass; use the sun and the bearings below.',
@@ -1013,11 +788,8 @@ abstract final class S {
 
   /// "A stick's shadow points to 312° NW. Stand facing along the shadow,
   /// then turn 40° to the right."
-  static Bi stickShadowGuide(
-    String shadowBearing,
-    int deg, {
-    required bool toRight,
-  }) {
+  static Bi stickShadowGuide(String shadowBearing, int deg,
+      {required bool toRight}) {
     final Bi dir = toRight ? right : left;
     return Bi(
       "A stick's shadow points to $shadowBearing. Stand facing along the "
@@ -1039,20 +811,17 @@ abstract final class S {
 
   /// "Use a hand compass: 312° magnetic".
   static Bi handCompass(int magneticDeg) => Bi(
-    'Use a hand compass: $magneticDeg° magnetic',
-    'Sebenzisa ikhompasi yesandla: $magneticDeg° kazibuthe',
-    key: 'hand_compass',
-    args: <String, Object>{'n': '$magneticDeg'},
-  );
+        'Use a hand compass: $magneticDeg° magnetic',
+        'Sebenzisa ikhompasi yesandla: $magneticDeg° kazibuthe',
+        key: 'hand_compass',
+        args: <String, Object>{'n': '$magneticDeg'},
+      );
 
   // Level bubble.
   static const Bi flat = Bi('Flat', 'Ithe bha', key: 'flat');
   static const Bi tilted = Bi('Tilted', 'Itshekile', key: 'tilted');
-  static const Bi keepFlat = Bi(
-    'Keep the phone flat',
-    'Gcina ifoni ithe bha',
-    key: 'level_s',
-  );
+  static const Bi keepFlat =
+      Bi('Keep the phone flat', 'Gcina ifoni ithe bha', key: 'level_s');
 
   // Permissions (motion sensors).
   static const Bi motionDenied = Bi(
@@ -1065,21 +834,12 @@ abstract final class S {
 
   // ---------------------------------------------------------------- towns
 
-  static const Bi pickTown = Bi(
-    'Pick a town',
-    'Khetha idolobha',
-    key: 'town_title',
-  );
-  static const Bi useThisTown = Bi(
-    'Use this town',
-    'Sebenzisa leli dolobha',
-    key: 'btn_town',
-  );
-  static const Bi searchTown = Bi(
-    'Search a town',
-    'Sesha idolobha',
-    key: 'search_town',
-  );
+  static const Bi pickTown =
+      Bi('Pick a town', 'Khetha idolobha', key: 'town_title');
+  static const Bi useThisTown =
+      Bi('Use this town', 'Sebenzisa leli dolobha', key: 'btn_town');
+  static const Bi searchTown =
+      Bi('Search a town', 'Sesha idolobha', key: 'search_town');
   static const Bi manualNote = Bi(
     'Use this when GPS is unavailable — for example indoors or when the phone '
         'has no signal.',
@@ -1093,20 +853,17 @@ abstract final class S {
     key: 'no_town_match',
   );
   static const Bi townNote = Bi(
-    'Town centre coordinates are approximate. Bearing error can be large nearby; '
-        'use a fresh, precise GPS fix for alignment.',
-    'Izixhumanisi zenkaba yedolobha ziyalinganiswa. Sebenzisa i-GPS enembile '
-        'ukuze uqinisekise isiqondiso.',
+    'Town centre coordinates: accurate to a few kilometres, which changes the '
+        'bearing by well under a degree.',
+    'Izixhumanisi zenkaba yedolobha: zinemba kumakhilomitha ambalwa, okushintsha '
+        'ukubheka ngaphansi kwedigri eyodwa.',
     key: 'town_note',
   );
 
   // ------------------------------------------------------------ settings
 
-  static const Bi settingsHeading = Bi(
-    'Settings',
-    'Izilungiselelo',
-    key: 'settings',
-  );
+  static const Bi settingsHeading =
+      Bi('Settings', 'Izilungiselelo', key: 'settings');
   static const Bi language = Bi('Language', 'Ulimi', key: 'language');
   static const Bi languageNote = Bi(
     'Choose the language for all text in the app.',
@@ -1125,31 +882,22 @@ abstract final class S {
         'kumafoni anememori encane.',
     key: 'battery_saver_note',
   );
-  static const Bi simpleModeAuto = Bi(
-    'On (this phone)',
-    'Kuvuliwe (le foni)',
-    key: 'simple_auto',
-  );
+  static const Bi simpleModeAuto =
+      Bi('On (this phone)', 'Kuvuliwe (le foni)', key: 'simple_auto');
   static const Bi on = Bi('On', 'Kuvuliwe', key: 'on');
   static const Bi off = Bi('Off', 'Kuvaliwe', key: 'off');
 
   // ---------------------------------------------------------- membership
 
-  static const Bi membershipTitle = Bi(
-    'Membership',
-    'Ubulungu',
-    key: 'membership',
-  );
+  static const Bi membershipTitle =
+      Bi('Membership', 'Ubulungu', key: 'membership');
   static const Bi account = Bi('Account', 'I-akhawunti', key: 'account');
   static const Bi logOut = Bi('Log out', 'Phuma', key: 'pay_signout');
 
   // ------------------------------------------------- log in / create account
 
-  static const Bi authTitle = Bi(
-    'Sign in to continue',
-    'Ngena ukuze uqhubeke',
-    key: 'auth_title',
-  );
+  static const Bi authTitle =
+      Bi('Sign in to continue', 'Ngena ukuze uqhubeke', key: 'auth_title');
   static const Bi authLogIn = Bi('Log in', 'Ngena', key: 'auth_verify');
   static const Bi authCreate = Bi(
     'Create account',
@@ -1166,11 +914,8 @@ abstract final class S {
     'Ikheli lakho le-imeyili',
     key: 'auth_email',
   );
-  static const Bi authPassword = Bi(
-    'Password',
-    'Iphasiwedi',
-    key: 'auth_password',
-  );
+  static const Bi authPassword =
+      Bi('Password', 'Iphasiwedi', key: 'auth_password');
   static const Bi authShowPassword = Bi(
     'Show password',
     'Bonisa iphasiwedi',
@@ -1190,13 +935,13 @@ abstract final class S {
   /// Shown after the recovery mail was accepted. Deliberately neutral: the
   /// server never says whether an address has an account.
   static Bi authForgotSent(String email) => Bi(
-    'If $email has an account, a reset link is on its way. Open it on '
-        'this phone to set a new password.',
-    'Uma u-$email ene-akhawunti, isixhumanisi sokusetha kabusha siyeza. '
-        'Sivule kule foni ukuze ubeke iphasiwedi entsha.',
-    key: 'auth_forgot_sent',
-    args: <String, Object>{'e': email},
-  );
+        'If $email has an account, a reset link is on its way. Open it on '
+            'this phone to set a new password.',
+        'Uma u-$email ene-akhawunti, isixhumanisi sokusetha kabusha siyeza. '
+            'Sivule kule foni ukuze ubeke iphasiwedi entsha.',
+        key: 'auth_forgot_sent',
+        args: <String, Object>{'e': email},
+      );
   static const Bi authBadEmail = Bi(
     'Please enter a valid e-mail address.',
     'Sicela ufake ikheli le-imeyili elifanele.',
@@ -1246,19 +991,16 @@ abstract final class S {
 
   // ----------------------------------------------- awaiting e-mail confirm
 
-  static const Bi authCheck = Bi(
-    'Check your e-mail',
-    'Bheka i-imeyili yakho',
-    key: 'auth_check',
-  );
+  static const Bi authCheck =
+      Bi('Check your e-mail', 'Bheka i-imeyili yakho', key: 'auth_check');
   static Bi confirmBody(String email) => Bi(
-    'We have sent a confirmation link to $email. Open it, then come back '
-        'and log in.',
-    'Sithumele isixhumanisi sokuqinisekisa ku-$email. Sivule, bese ubuya '
-        'ungene.',
-    key: 'confirm_body',
-    args: <String, Object>{'e': email},
-  );
+        'We have sent a confirmation link to $email. Open it, then come back '
+            'and log in.',
+        'Sithumele isixhumanisi sokuqinisekisa ku-$email. Sivule, bese ubuya '
+            'ungene.',
+        key: 'confirm_body',
+        args: <String, Object>{'e': email},
+      );
   static const Bi confirmResend = Bi(
     'Send the e-mail again',
     'Thumela i-imeyili futhi',
@@ -1289,11 +1031,8 @@ abstract final class S {
         'uqhubeke.',
     key: 'pw_body',
   );
-  static const Bi pwNew = Bi(
-    'New password',
-    'Iphasiwedi entsha',
-    key: 'pw_new',
-  );
+  static const Bi pwNew =
+      Bi('New password', 'Iphasiwedi entsha', key: 'pw_new');
   static const Bi pwConfirm = Bi(
     'Confirm new password',
     'Qinisekisa iphasiwedi entsha',
@@ -1304,11 +1043,8 @@ abstract final class S {
     'Amaphasiwedi amabili awafani.',
     key: 'pw_mismatch',
   );
-  static const Bi pwSave = Bi(
-    'Save password',
-    'Gcina iphasiwedi',
-    key: 'pw_save',
-  );
+  static const Bi pwSave =
+      Bi('Save password', 'Gcina iphasiwedi', key: 'pw_save');
   static const Bi pwChanged = Bi(
     'Your password has been changed.',
     'Iphasiwedi yakho ishintshiwe.',
@@ -1319,11 +1055,8 @@ abstract final class S {
     'Iphasiwedi ayikwazanga ukushintshwa. Sicela uzame futhi.',
     key: 'pw_failed',
   );
-  static const Bi pwChange = Bi(
-    'Change password',
-    'Shintsha iphasiwedi',
-    key: 'pw_change',
-  );
+  static const Bi pwChange =
+      Bi('Change password', 'Shintsha iphasiwedi', key: 'pw_change');
   static const Bi pwOffline = Bi(
     'You must be online to set a new password.',
     'Kumele uxhume ku-inthanethi ukuze ubeke iphasiwedi entsha.',
@@ -1333,11 +1066,11 @@ abstract final class S {
   // ------------------------------------------------------------ trial page
 
   static Bi trialTitle(int days) => Bi(
-    'Your $days-day free trial has started',
-    'Isikhathi sakho sezinsuku ezingu-$days sokuzama mahhala siqalile',
-    key: 'trial_title',
-    args: <String, Object>{'n': '$days'},
-  );
+        'Your $days-day free trial has started',
+        'Isikhathi sakho sezinsuku ezingu-$days sokuzama mahhala siqalile',
+        key: 'trial_title',
+        args: <String, Object>{'n': '$days'},
+      );
   static const Bi trialWhat = Bi(
     'Everything is included',
     'Konke kufakiwe',
@@ -1377,17 +1110,17 @@ abstract final class S {
   );
   static const Bi payNow = Bi('Pay now', 'Khokha manje', key: 'pay_now');
   static Bi trialLeft(int days) => Bi(
-    'Free trial: $days days left',
-    'Isikhathi sokuzama mahhala: kusele izinsuku ezingu-$days',
-    key: 'trial_left',
-    args: <String, Object>{'n': '$days'},
-  );
+        'Free trial: $days days left',
+        'Isikhathi sokuzama mahhala: kusele izinsuku ezingu-$days',
+        key: 'trial_left',
+        args: <String, Object>{'n': '$days'},
+      );
   static Bi trialOffer(int days, String price) => Bi(
-    'Free for $days days, then $price per month.',
-    'Mahhala izinsuku ezingu-$days, bese kuba ngu-$price ngenyanga.',
-    key: 'trial_offer',
-    args: <String, Object>{'n': '$days', 'p': price},
-  );
+        'Free for $days days, then $price per month.',
+        'Mahhala izinsuku ezingu-$days, bese kuba ngu-$price ngenyanga.',
+        key: 'trial_offer',
+        args: <String, Object>{'n': '$days', 'p': price},
+      );
   static const Bi trialEnded = Bi(
     'Your free trial has ended',
     'Isikhathi sakho sokuzama mahhala siphelile',
@@ -1409,17 +1142,17 @@ abstract final class S {
     key: 'pay_grace',
   );
   static Bi payOffer(String price) => Bi(
-    'Continue with a monthly membership of $price. Cancel any time.',
-    'Qhubeka ngobulungu banyanga zonke obungu-$price. Ungakhansela noma nini.',
-    key: 'pay_offer',
-    args: <String, Object>{'p': price},
-  );
+        'Continue with a monthly membership of $price. Cancel any time.',
+        'Qhubeka ngobulungu banyanga zonke obungu-$price. Ungakhansela noma nini.',
+        key: 'pay_offer',
+        args: <String, Object>{'p': price},
+      );
   static Bi payButton(String price) => Bi(
-    'Subscribe · $price per month',
-    'Bhalisa · $price ngenyanga',
-    key: 'pay_btn',
-    args: <String, Object>{'p': price},
-  );
+        'Subscribe · $price per month',
+        'Bhalisa · $price ngenyanga',
+        key: 'pay_btn',
+        args: <String, Object>{'p': price},
+      );
   static const Bi payStore = Bi(
     'A membership is required. Please sign in with a member account.',
     'Kudingeka ubulungu. Sicela ungene nge-akhawunti yelungu.',
@@ -1428,11 +1161,8 @@ abstract final class S {
 
   // --------------------------------------------------------------- offline
 
-  static const Bi offlineTitle = Bi(
-    'No connection',
-    'Akukho ukuxhumana',
-    key: 'offline_title',
-  );
+  static const Bi offlineTitle =
+      Bi('No connection', 'Akukho ukuxhumana', key: 'offline_title');
   static const Bi payOffline = Bi(
     'Connect to the internet to check your membership',
     'Xhuma ku-inthanethi ukuze sihlole ubulungu bakho',
@@ -1456,22 +1186,16 @@ abstract final class S {
     'I-imeyili yakho, ubulungu bakho, iphasiwedi yakho.',
     key: 'acct_note',
   );
-  static const Bi accountSignedInAs = Bi(
-    'Signed in as',
-    'Ungene njengo-',
-    key: 'acct_as',
-  );
-  static const Bi accountStatusLabel = Bi(
-    'Status',
-    'Isimo',
-    key: 'acct_status',
-  );
+  static const Bi accountSignedInAs =
+      Bi('Signed in as', 'Ungene njengo-', key: 'acct_as');
+  static const Bi accountStatusLabel =
+      Bi('Status', 'Isimo', key: 'acct_status');
   static Bi accountUntil(String date) => Bi(
-    'Access until $date',
-    'Ukufinyelela kuze kube ngu-$date',
-    key: 'acct_until',
-    args: <String, Object>{'d': date},
-  );
+        'Access until $date',
+        'Ukufinyelela kuze kube ngu-$date',
+        key: 'acct_until',
+        args: <String, Object>{'d': date},
+      );
   static const Bi payChecking = Bi(
     'Checking your membership…',
     'Sihlola ubulungu bakho…',
@@ -1503,21 +1227,15 @@ abstract final class S {
     key: 'pay_active',
   );
   static Bi payCancelledUntil(String date) => Bi(
-    'Cancelled. Access until $date',
-    'Kukhanseliwe. Ungasebenzisa kuze kube ngu-$date',
-    key: 'pay_cancelled_until',
-    args: <String, Object>{'d': date},
-  );
-  static const Bi payNone = Bi(
-    'No active membership',
-    'Abukho ubulungu obusebenzayo',
-    key: 'pay_none',
-  );
-  static const Bi payCancel = Bi(
-    'Cancel subscription',
-    'Khansela ukubhalisa',
-    key: 'pay_cancel',
-  );
+        'Cancelled. Access until $date',
+        'Kukhanseliwe. Ungasebenzisa kuze kube ngu-$date',
+        key: 'pay_cancelled_until',
+        args: <String, Object>{'d': date},
+      );
+  static const Bi payNone =
+      Bi('No active membership', 'Abukho ubulungu obusebenzayo', key: 'pay_none');
+  static const Bi payCancel =
+      Bi('Cancel subscription', 'Khansela ukubhalisa', key: 'pay_cancel');
   static const Bi payCancelConfirm = Bi(
     'Tap again to confirm the cancellation',
     'Cindezela futhi ukuze uqinisekise ukukhansela',
@@ -1553,59 +1271,36 @@ abstract final class S {
 
   // ------------------------------------------------------------ admin area
 
-  static const Bi adminOpen = Bi(
-    'Admin tools',
-    'Amathuluzi omphathi',
-    key: 'admin_open',
-  );
-  static const Bi adminTitle = Bi(
-    'Administration',
-    'Ukuphatha',
-    key: 'admin_title',
-  );
+  static const Bi adminOpen = Bi('Admin tools', 'Amathuluzi omphathi', key: 'admin_open');
+  static const Bi adminTitle =
+      Bi('Administration', 'Ukuphatha', key: 'admin_title');
   static const Bi adminNote = Bi(
     'Only administrators see this. The server checks it again.',
     'Abaphathi kuphela ababona lokhu. Iseva iyaphinda ihlole.',
     key: 'admin_note',
   );
-  static const Bi adminAddCentre = Bi(
-    'Add a centre',
-    'Engeza isikhungo',
-    key: 'admin_add_centre',
-  );
+  static const Bi adminAddCentre =
+      Bi('Add a centre', 'Engeza isikhungo', key: 'admin_add_centre');
   static const Bi adminGenPassword = Bi(
     'Auto-generate password',
     'Yakha iphasiwedi ngokuzenzakalela',
     key: 'admin_gen_pw',
   );
-  static const Bi adminDeleteUser = Bi(
-    'Delete a user',
-    'Susa umsebenzisi',
-    key: 'admin_del_user',
-  );
+  static const Bi adminDeleteUser =
+      Bi('Delete a user', 'Susa umsebenzisi', key: 'admin_del_user');
   static const Bi adminRegion = Bi('Region', 'Isifunda', key: 'admin_region');
-  static const Bi adminCentreName = Bi(
-    'Centre name',
-    'Igama lesikhungo',
-    key: 'admin_name',
-  );
+  static const Bi adminCentreName =
+      Bi('Centre name', 'Igama lesikhungo', key: 'admin_name');
   static const Bi adminAddress = Bi('Address', 'Ikheli', key: 'admin_address');
-  static const Bi adminPhone = Bi(
-    'Phone number',
-    'Inombolo yocingo',
-    key: 'admin_phone',
-  );
-  static const Bi adminRequired = Bi(
-    'Required',
-    'Kuyadingeka',
-    key: 'admin_required',
-  );
+  static const Bi adminPhone =
+      Bi('Phone number', 'Inombolo yocingo', key: 'admin_phone');
+  static const Bi adminRequired = Bi('Required', 'Kuyadingeka', key: 'admin_required');
   static Bi adminCentreAdded(String name) => Bi(
-    '$name has been added.',
-    'U-$name wengeziwe.',
-    key: 'admin_centre_added',
-    args: <String, Object>{'n': name},
-  );
+        '$name has been added.',
+        'U-$name wengeziwe.',
+        key: 'admin_centre_added',
+        args: <String, Object>{'n': name},
+      );
   static const Bi adminDuplicateCentre = Bi(
     'A centre with that name already exists in that region.',
     'Kukhona kakade isikhungo esinaleli gama kuleso sifunda.',
@@ -1628,19 +1323,19 @@ abstract final class S {
     key: 'admin_no_users',
   );
   static Bi adminSelected(String email) => Bi(
-    'Selected: $email',
-    'Okukhethiwe: $email',
-    key: 'admin_selected',
-    args: <String, Object>{'e': email},
-  );
+        'Selected: $email',
+        'Okukhethiwe: $email',
+        key: 'admin_selected',
+        args: <String, Object>{'e': email},
+      );
   static Bi adminGenConfirm(String email) => Bi(
-    'Generate a new temporary password for $email? Their current password '
-        'stops working at once.',
-    'Yakha iphasiwedi entsha yesikhashana ka-$email? Iphasiwedi yakhe '
-        'yamanje iyeka ukusebenza ngaso leso sikhathi.',
-    key: 'admin_gen_confirm',
-    args: <String, Object>{'e': email},
-  );
+        'Generate a new temporary password for $email? Their current password '
+            'stops working at once.',
+        'Yakha iphasiwedi entsha yesikhashana ka-$email? Iphasiwedi yakhe '
+            'yamanje iyeka ukusebenza ngaso leso sikhathi.',
+        key: 'admin_gen_confirm',
+        args: <String, Object>{'e': email},
+      );
   static const Bi adminGenerate = Bi(
     'Generate password',
     'Yakha iphasiwedi',
@@ -1657,33 +1352,26 @@ abstract final class S {
     key: 'admin_temp_warn',
   );
   static const Bi adminCopy = Bi('Copy', 'Kopisha', key: 'admin_copy');
-  static const Bi adminCopied = Bi(
-    'Copied',
-    'Kukopishiwe',
-    key: 'admin_copied',
-  );
+  static const Bi adminCopied = Bi('Copied', 'Kukopishiwe', key: 'admin_copied');
   static Bi adminDeleteConfirm(String email) => Bi(
-    'Type $email to confirm the deletion.',
-    'Thayipha u-$email ukuze uqinisekise ukususa.',
-    key: 'admin_del_confirm',
-    args: <String, Object>{'e': email},
-  );
+        'Type $email to confirm the deletion.',
+        'Thayipha u-$email ukuze uqinisekise ukususa.',
+        key: 'admin_del_confirm',
+        args: <String, Object>{'e': email},
+      );
   static const Bi adminDeleteMismatch = Bi(
     'The e-mail does not match.',
     'I-imeyili ayifani.',
     key: 'admin_del_mismatch',
   );
-  static const Bi adminDelete = Bi(
-    'Delete user',
-    'Susa umsebenzisi',
-    key: 'admin_delete',
-  );
+  static const Bi adminDelete =
+      Bi('Delete user', 'Susa umsebenzisi', key: 'admin_delete');
   static Bi adminDeleted(String email) => Bi(
-    '$email has been deleted.',
-    'U-$email ususiwe.',
-    key: 'admin_deleted',
-    args: <String, Object>{'e': email},
-  );
+        '$email has been deleted.',
+        'U-$email ususiwe.',
+        key: 'admin_deleted',
+        args: <String, Object>{'e': email},
+      );
   static const Bi adminDeletedCancelled = Bi(
     'Their subscription was cancelled as well.',
     'Ukubhalisa kwakhe nakho kukhanseliwe.',
