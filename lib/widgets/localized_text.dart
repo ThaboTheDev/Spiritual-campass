@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/l10n/strings.dart';
 import 'language_scope.dart';
 
-/// A [Bi] string shown in the language chosen on the Guide tab.
+/// A [Bi] string shown in the language chosen in the app.
 ///
 /// Rebuilds in place when the language changes (see [LanguageScope]), so
 /// switching languages updates every label without recreating the screens

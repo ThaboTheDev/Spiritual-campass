@@ -81,8 +81,9 @@ class AuthSession {
 
 /// The outcome of `POST /auth/v1/signup`.
 ///
-/// With e-mail confirmation ON Supabase answers 200 with a user but **no**
-/// session: [session] is then `null` and [needsConfirmation] is `true`.
+/// E-mail confirmation is off in the project, so the answer carries a session
+/// and the member is signed in immediately. [session] is `null` only if the
+/// server ever answers without one.
 class SignUpResult {
   const SignUpResult({required this.email, this.session});
 
@@ -107,11 +108,8 @@ class SignUpResult {
 
   final String email;
 
-  /// The session, when the project has e-mail confirmation switched off.
+  /// The session that came back with the new account.
   final AuthSession? session;
-
-  /// Whether the member must open the confirmation link before logging in.
-  bool get needsConfirmation => session == null;
 }
 
 /// Entitlement states the server may report. Unknown values map to [other]

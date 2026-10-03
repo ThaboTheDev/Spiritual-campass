@@ -7,18 +7,17 @@ Nothing here may be renamed: the backend is built to exactly these names.
 
 ## Sign-in (Supabase Auth REST, no SDK). Header on every call: `apikey: <SUPABASE_ANON_KEY>`
 
+E-mail confirmation and password recovery are **not** used. The Supabase
+project must have *Confirm email* switched off, so a sign-up answers with a
+session and the member is signed in immediately. A forgotten password is issued
+by an administrator (`POST /api/admin/users/reset-password`), which sets
+`must_change_password` and forces the change-password screen at the next login.
+
 - Sign up:    POST {SUPABASE_URL}/auth/v1/signup   body {"email": e, "password": p}
-              With e-mail confirmation ON the answer carries **no** session:
-              the app then shows "check your e-mail".
-- Resend:     POST {SUPABASE_URL}/auth/v1/resend   body {"type":"signup","email": e}
+              -> {access_token, refresh_token, expires_in, user:{id, email}}
 - Log in:     POST {SUPABASE_URL}/auth/v1/token?grant_type=password
               body {"email": e, "password": p}
               -> {access_token, refresh_token, expires_in, user:{id, email}}
-- Forgot:     POST {SUPABASE_URL}/auth/v1/recover?redirect_to={SITE_URL}/reset
-              body {"email": e}
-              Always 200, even for an unknown address (so the answer must not
-              say whether the address exists). The link opens the web reset
-              page in the phone's browser — no deep links in the app.
 - Refresh:    POST {SUPABASE_URL}/auth/v1/token?grant_type=refresh_token
               body {"refresh_token": r}
               On a **4xx** refresh error, sign the user out locally. A network
@@ -29,9 +28,8 @@ Session stored locally: access_token, refresh_token, expires_at
 
 Error bodies are read from `error_code` / `code` / `error` and
 `msg` / `message` / `error_description`, and mapped to:
-`email_not_confirmed`, `invalid_credentials` (incl. `invalid_grant`),
-`user_already_exists` / `email_exists`, `weak_password`, rate limited (429),
-server (5xx), unknown.
+`invalid_credentials` (incl. `invalid_grant`), `user_already_exists` /
+`email_exists`, `weak_password`, rate limited (429), server (5xx), unknown.
 
 ## GET /api/me
 

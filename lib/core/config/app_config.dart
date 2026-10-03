@@ -8,13 +8,15 @@
 /// flutter build appbundle \
 ///     --dart-define=MEMBERSHIP_API_BASE_URL=https://members.example.org \
 ///     --dart-define=SUPABASE_URL=https://abcd.supabase.co \
-///     --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi... \
-///     --dart-define=SITE_URL=https://members.example.org
+///     --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi...
 /// ```
 ///
 /// Membership is no longer optional: the whole app (the compass included) is
 /// behind e-mail + password login and behind access (trial or paid), so these
-/// four values must be supplied for any build that is meant to run.
+/// three values must be supplied for any build that is meant to run.
+///
+/// The app uses neither e-mail confirmation nor password recovery, so there is
+/// no site URL to redirect a browser to.
 library;
 
 /// Store builds (Google Play / App Store) hide every purchase or subscribe
@@ -40,17 +42,13 @@ const String kSupabaseUrl = String.fromEnvironment(
 
 /// Supabase anonymous (public) API key. Placeholder — it is safe to ship the
 /// real anon key in the app; it is not a secret.
+///
+/// The project must have **Confirm email** switched off (Authentication ▸
+/// Providers ▸ Email): the app signs a new member in straight after sign-up
+/// and has no confirmation step.
 const String kSupabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue: 'YOUR_SUPABASE_ANON_KEY',
-);
-
-/// Public site of the web edition. "Forgot password" asks Supabase to send a
-/// recovery mail pointing at `{kSiteUrl}/reset`, which opens in the phone's
-/// browser — so the app needs no deep links. Placeholder.
-const String kSiteUrl = String.fromEnvironment(
-  'SITE_URL',
-  defaultValue: 'https://example.invalid',
 );
 
 /// Soft cap of the on-disk map tile cache (about 50 MB). Ignored (cache off)

@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../core/l10n/strings.dart';
 import '../core/theme/app_theme.dart';
+import '../features/settings/widgets/language_button.dart';
 import 'language_scope.dart';
 
-/// The header shown at the top of every screen: eyebrow, serif title and the
-/// round blue-and-gold crest.
+/// The header shown at the top of every screen: eyebrow, serif title, the
+/// language button and the round blue-and-gold crest.
 class AppHeader extends StatelessWidget {
   const AppHeader({
     super.key,
     this.logoSize = 46,
     this.showLogo = true,
+    this.showLanguageButton = true,
     this.title = S.appTitle,
   });
 
@@ -20,6 +22,10 @@ class AppHeader extends StatelessWidget {
   /// Whether to show the crest (it is hidden on the Guide screen, which ends
   /// with the large crest instead).
   final bool showLogo;
+
+  /// Whether to show the language control. It is on by default so the choice
+  /// is reachable from every screen, the gate's included.
+  final bool showLanguageButton;
 
   /// Title text; only the Guide screen overrides it.
   final String title;
@@ -54,6 +60,10 @@ class AppHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (showLanguageButton) ...<Widget>[
+            const SizedBox(width: 10),
+            const LanguageButton(),
+          ],
           if (showLogo) ...<Widget>[
             const SizedBox(width: 12),
             Semantics(
