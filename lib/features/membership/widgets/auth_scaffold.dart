@@ -136,8 +136,6 @@ Bi? membershipErrorText(MembershipError error) {
       return S.pwMismatch;
     case MembershipError.invalidCredentials:
       return S.authInvalid;
-    case MembershipError.emailNotConfirmed:
-      return S.authNotConfirmed;
     case MembershipError.alreadyRegistered:
       return S.authAlready;
     case MembershipError.weakPassword:

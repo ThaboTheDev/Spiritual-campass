@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tshk_compass/app_providers.dart';
 import 'package:tshk_compass/core/l10n/strings.dart';
+import 'package:tshk_compass/data/local/preferences_store.dart';
 import 'package:tshk_compass/features/membership/admin/temp_password_dialog.dart';
 import 'package:tshk_compass/features/membership/membership_controller.dart';
 import 'package:tshk_compass/features/membership/membership_models.dart';
@@ -14,9 +17,9 @@ import 'package:tshk_compass/features/membership/screens/trial_intro_screen.dart
 
 /// A controller with a fixed state: the screens are tested, not the network.
 ///
-/// The validation paths (`logIn`, `recoverPassword`, `changePassword`) are
-/// deliberately **not** overridden — they never touch the network when the
-/// input is wrong, which is exactly what these tests check.
+/// The validation paths (`logIn`, `changePassword`) are deliberately **not**
+/// overridden — they never touch the network when the input is wrong, which is
+/// exactly what these tests check.
 class FakeMembership extends MembershipController {
   FakeMembership(this.initial);
 
@@ -73,6 +76,16 @@ Entitlement entitlement({
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  /// The header's language button reads the persisted language choice, so
+  /// every screen here needs a preferences store behind it.
+  late SharedPreferences preferences;
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    preferences = await SharedPreferences.getInstance();
+  });
+
   /// Taps a control that may be below the fold on a small test surface.
   Future<void> tapKey(WidgetTester tester, Key key) async {
     final Finder finder = find.byKey(key);
@@ -86,6 +99,8 @@ void main() {
   Widget host(Widget child, FakeMembership fake) => ProviderScope(
         overrides: <Override>[
           membershipControllerProvider.overrideWith(() => fake),
+          preferencesStoreProvider
+              .overrideWithValue(PreferencesStore(preferences)),
         ],
         child: MaterialApp(
           theme: ThemeData.dark(),
@@ -163,7 +178,20 @@ void main() {
       await tapKey(tester, LoginScreen.createTabKey);
 
       expect(find.text(S.authShortPassword.text), findsOneWidget);
-      expect(find.byKey(LoginScreen.forgotKey), findsNothing);
+      expect(find.byKey(LoginScreen.adminHelpKey), findsNothing);
+    });
+
+    testWidgets('the log in half points at an administrator for a password',
+        (WidgetTester tester) async {
+      final FakeMembership fake = FakeMembership(
+        const MembershipState(phase: AuthPhase.signedOut),
+      );
+      await tester.pumpWidget(host(const LoginScreen(), fake));
+
+      // No self-service recovery: no button and no request, only the note.
+      await tester.ensureVisible(find.byKey(LoginScreen.adminHelpKey));
+      await tester.pumpAndSettle();
+      expect(find.text(S.authContactAdmin.text), findsOneWidget);
     });
   });
 
@@ -195,6 +223,8 @@ void main() {
         ProviderScope(
           overrides: <Override>[
             membershipControllerProvider.overrideWith(() => fake),
+            preferencesStoreProvider
+                .overrideWithValue(PreferencesStore(preferences)),
           ],
           child: MaterialApp(
             theme: ThemeData.dark(),

@@ -1,7 +1,8 @@
 /// Single source of truth for every user visible string in TSHK Compass.
 ///
-/// The whole app is shown in one language at a time, chosen on the Guide tab:
-/// English, isiZulu, Português, Chichewa or iciBemba. English and isiZulu are
+/// The whole app is shown in one language at a time, chosen with the language
+/// button in the header (and in the settings card on the Guide tab): English,
+/// isiZulu, Português, Chichewa or iciBemba. English and isiZulu are
 /// authored here; Portuguese, Chichewa and Bemba come from
 /// `assets/translations.json` through the [Bi.key] of each string (see
 /// [L10n.resolve] for the fallback order: chosen language → English).
@@ -926,22 +927,13 @@ abstract final class S {
     'Fihla iphasiwedi',
     key: 'auth_pw_hide',
   );
-  static const Bi authForgot = Bi(
-    'Forgot password?',
-    'Ukhohlwe iphasiwedi?',
-    key: 'auth_forgot',
+  /// There is no self-service password recovery: an administrator generates a
+  /// new password instead (Admin tools ▸ auto-generate a password).
+  static const Bi authContactAdmin = Bi(
+    'Forgot your password? An administrator can issue you a new one.',
+    'Ukhohlwe iphasiwedi yakho? Umphathi angakunika entsha.',
+    key: 'auth_contact_admin',
   );
-
-  /// Shown after the recovery mail was accepted. Deliberately neutral: the
-  /// server never says whether an address has an account.
-  static Bi authForgotSent(String email) => Bi(
-        'If $email has an account, a reset link is on its way. Open it on '
-            'this phone to set a new password.',
-        'Uma u-$email ene-akhawunti, isixhumanisi sokusetha kabusha siyeza. '
-            'Sivule kule foni ukuze ubeke iphasiwedi entsha.',
-        key: 'auth_forgot_sent',
-        args: <String, Object>{'e': email},
-      );
   static const Bi authBadEmail = Bi(
     'Please enter a valid e-mail address.',
     'Sicela ufake ikheli le-imeyili elifanele.',
@@ -962,12 +954,6 @@ abstract final class S {
     'Leyo imeyili nephasiwedi azihambisani. Sicela uzame futhi.',
     key: 'auth_invalid',
   );
-  static const Bi authNotConfirmed = Bi(
-    'Confirm your e-mail address first. Open the link we sent you.',
-    'Qinisekisa ikheli lakho le-imeyili kuqala. Vula isixhumanisi esikuthumele '
-        'sona.',
-    key: 'auth_not_confirmed',
-  );
   static const Bi authAlready = Bi(
     'That address already has an account. Log in instead.',
     'Lelo kheli selinayo i-akhawunti. Ngena kunalokho.',
@@ -987,34 +973,6 @@ abstract final class S {
     'That did not work. Please try again.',
     'Lokho akusebenzanga. Sicela uzame futhi.',
     key: 'auth_failed',
-  );
-
-  // ----------------------------------------------- awaiting e-mail confirm
-
-  static const Bi authCheck =
-      Bi('Check your e-mail', 'Bheka i-imeyili yakho', key: 'auth_check');
-  static Bi confirmBody(String email) => Bi(
-        'We have sent a confirmation link to $email. Open it, then come back '
-            'and log in.',
-        'Sithumele isixhumanisi sokuqinisekisa ku-$email. Sivule, bese ubuya '
-            'ungene.',
-        key: 'confirm_body',
-        args: <String, Object>{'e': email},
-      );
-  static const Bi confirmResend = Bi(
-    'Send the e-mail again',
-    'Thumela i-imeyili futhi',
-    key: 'confirm_resend',
-  );
-  static const Bi confirmResent = Bi(
-    'Sent. Look in your inbox and in your spam folder.',
-    'Kuthunyelwe. Bheka kwi-inbox nakwi-spam yakho.',
-    key: 'confirm_resent',
-  );
-  static const Bi confirmDone = Bi(
-    "I've confirmed, log in",
-    'Sengiqinisekisile, ngingena',
-    key: 'confirm_done',
   );
 
   // ------------------------------------------------------- password change

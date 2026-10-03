@@ -12,7 +12,9 @@ import '../language_controller.dart';
 
 /// Language switcher and the "Battery saver / Simple mode" switch.
 ///
-/// Lives on the Guide tab so it needs no extra navigation.
+/// Lives on the Guide tab so it needs no extra navigation. The same language
+/// choice is also one tap away in the header's `LanguageButton`, which is the
+/// one a member can reach before logging in.
 class SettingsCard extends ConsumerWidget {
   const SettingsCard({super.key});
 

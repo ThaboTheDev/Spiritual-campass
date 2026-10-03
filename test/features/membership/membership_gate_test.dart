@@ -78,7 +78,6 @@ void main() {
             ),
             baseUrl: 'https://project.supabase.co',
             anonKey: 'anon',
-            siteUrl: 'https://example.org',
           ),
         ),
       ],
@@ -487,12 +486,17 @@ void main() {
       );
     });
 
-    test('an unconfirmed address lands on the "check your e-mail" screen',
+    test('there is no confirmation screen: a refused login stays on this one',
         () async {
+      // Confirmation is off in the project; a server that still asks for it
+      // arrives as an invalid_grant and is shown as an ordinary failed login.
       final (ProviderContainer container, _) = await harness(
         api: (http.Request request) => http.Response('{}', 200),
         auth: (http.Request request) => http.Response(
-          jsonEncode(<String, dynamic>{'error_code': 'email_not_confirmed'}),
+          jsonEncode(<String, dynamic>{
+            'error': 'invalid_grant',
+            'error_description': 'Email not confirmed',
+          }),
           400,
         ),
       );
@@ -505,11 +509,50 @@ void main() {
 
       final MembershipState state =
           container.read(membershipControllerProvider);
-      expect(state.phase, AuthPhase.awaitingEmailConfirm);
-      expect(state.error, MembershipError.emailNotConfirmed);
+      expect(state.phase, AuthPhase.signedOut);
+      expect(state.error, MembershipError.invalidCredentials);
+      expect(state.busy, isFalse);
     });
 
-    test('signing up with confirmation on waits for the e-mail', () async {
+    test('creating an account signs the member straight in', () async {
+      final (ProviderContainer container, _) = await harness(
+        api: (http.Request request) => http.Response(
+          jsonEncode(<String, dynamic>{
+            ...me(),
+            'email': 'new@example.org',
+          }),
+          200,
+        ),
+        auth: (http.Request request) => http.Response(
+          jsonEncode(<String, dynamic>{
+            'access_token': 'at',
+            'refresh_token': 'rt',
+            'expires_in': 3600,
+            'user': <String, dynamic>{
+              'id': 'user-9',
+              'email': 'new@example.org',
+            },
+          }),
+          200,
+        ),
+        prefs: <String, Object>{'membership.trialIntro.user-9': true},
+      );
+
+      container.read(membershipControllerProvider);
+      await settle();
+      await container
+          .read(membershipControllerProvider.notifier)
+          .signUp('new@example.org', 'secret123');
+      await settle();
+
+      final MembershipState state =
+          container.read(membershipControllerProvider);
+      expect(state.phase, AuthPhase.ready);
+      expect(state.email, 'new@example.org');
+      expect(state.busy, isFalse);
+    });
+
+    test('a sign-up answer without a session is an ordinary failure', () async {
       final (ProviderContainer container, _) = await harness(
         api: (http.Request request) => http.Response('{}', 200),
         auth: (http.Request request) => http.Response(
@@ -523,11 +566,13 @@ void main() {
       await container
           .read(membershipControllerProvider.notifier)
           .signUp('new@example.org', 'secret123');
+      await settle();
 
-      expect(
-        container.read(membershipControllerProvider).phase,
-        AuthPhase.awaitingEmailConfirm,
-      );
+      final MembershipState state =
+          container.read(membershipControllerProvider);
+      expect(state.phase, AuthPhase.signedOut);
+      expect(state.error, MembershipError.authFailed);
+      expect(state.busy, isFalse);
     });
 
     test('a short password is refused before the request', () async {

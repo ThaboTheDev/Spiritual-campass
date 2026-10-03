@@ -21,9 +21,6 @@ enum AuthPhase {
   /// Log in or create an account.
   signedOut,
 
-  /// Signed up, waiting for the confirmation link to be opened.
-  awaitingEmailConfirm,
-
   /// The server says `must_change_password`: nothing else works until a new
   /// password is set. Reached online *and* from the cache, never skipped.
   mustChangePassword,
@@ -54,7 +51,6 @@ enum MembershipError {
   shortPassword,
   passwordMismatch,
   invalidCredentials,
-  emailNotConfirmed,
   alreadyRegistered,
   weakPassword,
   rateLimited,
@@ -80,8 +76,6 @@ class MembershipState {
     this.confirmingCancel = false,
     this.awaitingPayment = false,
     this.cancelledNotice = false,
-    this.recoverySent = false,
-    this.confirmationResent = false,
     this.passwordChanged = false,
   });
 
@@ -103,12 +97,6 @@ class MembershipState {
 
   /// Server confirmed a cancellation this session.
   final bool cancelledNotice;
-
-  /// "Forgot password" mail was accepted by Supabase.
-  final bool recoverySent;
-
-  /// The confirmation mail was sent again.
-  final bool confirmationResent;
 
   /// The password was changed this session.
   final bool passwordChanged;
@@ -145,8 +133,6 @@ class MembershipState {
     bool? confirmingCancel,
     bool? awaitingPayment,
     bool? cancelledNotice,
-    bool? recoverySent,
-    bool? confirmationResent,
     bool? passwordChanged,
   }) {
     return MembershipState(
@@ -160,8 +146,6 @@ class MembershipState {
       confirmingCancel: confirmingCancel ?? this.confirmingCancel,
       awaitingPayment: awaitingPayment ?? this.awaitingPayment,
       cancelledNotice: cancelledNotice ?? this.cancelledNotice,
-      recoverySent: recoverySent ?? this.recoverySent,
-      confirmationResent: confirmationResent ?? this.confirmationResent,
       passwordChanged: passwordChanged ?? this.passwordChanged,
     );
   }
@@ -170,6 +154,11 @@ class MembershipState {
 /// The one state machine behind the gate: e-mail + password sign-in,
 /// `/api/me`, the forced password change, PayFast checkout / cancel and the
 /// offline entitlement cache.
+///
+/// Creating an account signs the member in immediately — there is no e-mail
+/// confirmation step and no self-service password recovery. A forgotten
+/// password is issued by an administrator (Admin tools ▸ auto-generate a
+/// password), which then forces the change-password screen on next login.
 ///
 /// Rules it must keep:
 /// * the server decides access; this only mirrors it,
@@ -227,7 +216,6 @@ class MembershipController extends Notifier<MembershipState> {
     state = state.copyWith(
       mode: mode,
       error: MembershipError.none,
-      recoverySent: false,
     );
   }
 
@@ -249,7 +237,6 @@ class MembershipController extends Notifier<MembershipState> {
       busy: true,
       error: MembershipError.none,
       email: trimmed,
-      recoverySent: false,
     );
     try {
       final AuthSession session = await _auth.signInWithPassword(trimmed, password);
@@ -258,19 +245,16 @@ class MembershipController extends Notifier<MembershipState> {
     } on MembershipOffline {
       state = state.copyWith(busy: false, error: MembershipError.offline);
     } on AuthException catch (error) {
-      if (error.kind == AuthErrorKind.emailNotConfirmed) {
-        state = state.copyWith(
-          phase: AuthPhase.awaitingEmailConfirm,
-          busy: false,
-          error: MembershipError.emailNotConfirmed,
-        );
-        return;
-      }
       state = state.copyWith(busy: false, error: _authError(error.kind));
     }
   }
 
-  /// `POST /auth/v1/signup`. With confirmation ON there is no session yet.
+  /// `POST /auth/v1/signup`, which signs the new member straight in.
+  ///
+  /// E-mail confirmation is off in the project, so the answer always carries
+  /// a session; if a server ever answers without one the member is left on
+  /// this screen with the ordinary "that did not work" message rather than
+  /// being sent anywhere else.
   Future<void> signUp(String email, String password) async {
     if (state.busy) {
       return;
@@ -288,16 +272,14 @@ class MembershipController extends Notifier<MembershipState> {
       busy: true,
       error: MembershipError.none,
       email: trimmed,
-      recoverySent: false,
     );
     try {
       final SignUpResult result = await _auth.signUp(trimmed, password);
       final AuthSession? session = result.session;
       if (session == null) {
         state = state.copyWith(
-          phase: AuthPhase.awaitingEmailConfirm,
           busy: false,
-          confirmationResent: false,
+          error: MembershipError.authFailed,
         );
         return;
       }
@@ -308,67 +290,6 @@ class MembershipController extends Notifier<MembershipState> {
     } on AuthException catch (error) {
       state = state.copyWith(busy: false, error: _authError(error.kind));
     }
-  }
-
-  /// `POST /auth/v1/resend {type:"signup"}`.
-  Future<void> resendConfirmation() async {
-    if (state.busy || state.email.isEmpty) {
-      return;
-    }
-    state = state.copyWith(
-      busy: true,
-      error: MembershipError.none,
-      confirmationResent: false,
-    );
-    try {
-      await _auth.resendConfirmation(state.email);
-      state = state.copyWith(busy: false, confirmationResent: true);
-    } on MembershipOffline {
-      state = state.copyWith(busy: false, error: MembershipError.offline);
-    } on AuthException catch (error) {
-      state = state.copyWith(busy: false, error: _authError(error.kind));
-    }
-  }
-
-  /// `POST /auth/v1/recover?redirect_to={kSiteUrl}/reset`.
-  ///
-  /// Supabase answers 200 even for an address it does not know (it will not
-  /// confirm who has an account), so the confirmation message is deliberately
-  /// neutral.
-  Future<void> recoverPassword(String email) async {
-    if (state.busy) {
-      return;
-    }
-    final String trimmed = email.trim();
-    if (!_emailPattern.hasMatch(trimmed)) {
-      state = state.copyWith(error: MembershipError.badEmail);
-      return;
-    }
-    state = state.copyWith(
-      busy: true,
-      error: MembershipError.none,
-      email: trimmed,
-      recoverySent: false,
-    );
-    try {
-      await _auth.recover(trimmed);
-      state = state.copyWith(busy: false, recoverySent: true);
-    } on MembershipOffline {
-      state = state.copyWith(busy: false, error: MembershipError.offline);
-    } on AuthException catch (error) {
-      state = state.copyWith(busy: false, error: _authError(error.kind));
-    }
-  }
-
-  /// Back to the first screen (from "awaiting confirmation").
-  void backToLogin() {
-    state = state.copyWith(
-      phase: AuthPhase.signedOut,
-      mode: AuthMode.logIn,
-      error: MembershipError.none,
-      confirmationResent: false,
-      busy: false,
-    );
   }
 
   /// Signs out locally and drops everything cached for this member.
@@ -671,8 +592,6 @@ class MembershipController extends Notifier<MembershipState> {
     state = state.copyWith(
       error: MembershipError.none,
       cancelledNotice: false,
-      recoverySent: false,
-      confirmationResent: false,
       passwordChanged: false,
     );
   }
@@ -736,7 +655,6 @@ class MembershipController extends Notifier<MembershipState> {
 
   static MembershipError _authError(AuthErrorKind kind) => switch (kind) {
         AuthErrorKind.invalidCredentials => MembershipError.invalidCredentials,
-        AuthErrorKind.emailNotConfirmed => MembershipError.emailNotConfirmed,
         AuthErrorKind.alreadyRegistered => MembershipError.alreadyRegistered,
         AuthErrorKind.weakPassword => MembershipError.weakPassword,
         AuthErrorKind.rateLimited => MembershipError.rateLimited,

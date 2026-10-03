@@ -20,19 +20,22 @@ void main() {
       );
     });
 
-    test('email not confirmed is checked before the credentials case', () {
+    test('there is no confirmation step: "not confirmed" is bad credentials',
+        () {
+      // Confirmation is off in the project, so the app has no such state; a
+      // project that still asks for it shows an ordinary failed login.
       expect(
         mapSupabaseAuthError(400, <String, dynamic>{
           'error': 'invalid_grant',
           'error_description': 'Email not confirmed',
         }),
-        AuthErrorKind.emailNotConfirmed,
+        AuthErrorKind.invalidCredentials,
       );
       expect(
         mapSupabaseAuthError(400, <String, dynamic>{
           'error_code': 'email_not_confirmed',
         }),
-        AuthErrorKind.emailNotConfirmed,
+        AuthErrorKind.unknown,
       );
     });
 
@@ -106,7 +109,6 @@ void main() {
           client: MockClient((http.Request request) async => handler(request)),
           baseUrl: 'https://project.supabase.co',
           anonKey: 'anon-key',
-          siteUrl: 'https://example.org',
         );
 
     test('sign-in returns a session and remembers the user id', () async {
@@ -191,29 +193,12 @@ void main() {
       );
     });
 
-    test('sign-up with confirmation on has no session', () async {
-      final SupabaseAuthClient auth = clientReturning(
-        (http.Request request) => http.Response(
-          jsonEncode(<String, dynamic>{
-            'id': 'user-2',
-            'email': 'new@example.org',
-            'confirmation_sent_at': '2026-01-01T00:00:00Z',
-          }),
-          200,
-        ),
-      );
-
-      final SignUpResult result =
-          await auth.signUp('new@example.org', 'secret123');
-
-      expect(result.needsConfirmation, isTrue);
-      expect(result.session, isNull);
-      expect(result.email, 'new@example.org');
-    });
-
-    test('sign-up with confirmation off returns the session', () async {
-      final SupabaseAuthClient auth = clientReturning(
-        (http.Request request) => http.Response(
+    test('sign-up posts the address and password and keeps the session',
+        () async {
+      late final http.Request seen;
+      final SupabaseAuthClient auth = clientReturning((http.Request request) {
+        seen = request;
+        return http.Response(
           jsonEncode(<String, dynamic>{
             'access_token': 'at',
             'refresh_token': 'rt',
@@ -221,46 +206,43 @@ void main() {
             'user': <String, dynamic>{'id': 'u', 'email': 'new@example.org'},
           }),
           200,
+        );
+      });
+
+      final SignUpResult result =
+          await auth.signUp('new@example.org', 'secret123');
+
+      expect(seen.url.path, '/auth/v1/signup');
+      expect(
+        jsonDecode(seen.body),
+        <String, dynamic>{
+          'email': 'new@example.org',
+          'password': 'secret123',
+        },
+      );
+      expect(result.email, 'new@example.org');
+      expect(result.session!.accessToken, 'at');
+      expect(result.session!.userId, 'u');
+    });
+
+    test('a sign-up answer without a token carries no session', () async {
+      // Only happens if a project is misconfigured with confirmation on; the
+      // controller shows an ordinary failure instead of a confirmation screen.
+      final SupabaseAuthClient auth = clientReturning(
+        (http.Request request) => http.Response(
+          jsonEncode(<String, dynamic>{
+            'id': 'user-2',
+            'email': 'new@example.org',
+          }),
+          200,
         ),
       );
 
       final SignUpResult result =
           await auth.signUp('new@example.org', 'secret123');
 
-      expect(result.needsConfirmation, isFalse);
-      expect(result.session!.accessToken, 'at');
-    });
-
-    test('resend asks for the signup mail again', () async {
-      late final http.Request seen;
-      final SupabaseAuthClient auth = clientReturning((http.Request request) {
-        seen = request;
-        return http.Response('{}', 200);
-      });
-
-      await auth.resendConfirmation('member@example.org');
-
-      expect(seen.url.path, '/auth/v1/resend');
-      expect(
-        jsonDecode(seen.body),
-        <String, dynamic>{'type': 'signup', 'email': 'member@example.org'},
-      );
-    });
-
-    test('recover points at {siteUrl}/reset', () async {
-      late final http.Request seen;
-      final SupabaseAuthClient auth = clientReturning((http.Request request) {
-        seen = request;
-        return http.Response('{}', 200);
-      });
-
-      await auth.recover('member@example.org');
-
-      expect(seen.url.path, '/auth/v1/recover');
-      expect(
-        seen.url.queryParameters['redirect_to'],
-        'https://example.org/reset',
-      );
+      expect(result.session, isNull);
+      expect(result.email, 'new@example.org');
     });
 
     test('a rejected refresh token surfaces its 4xx status', () async {

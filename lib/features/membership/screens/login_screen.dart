@@ -14,6 +14,10 @@ import '../widgets/auth_scaffold.dart';
 ///
 /// Nothing in the app — not even the compass — is reachable from here until
 /// the server has confirmed who the member is and that they have access.
+///
+/// Creating an account signs the member in at once: there is no confirmation
+/// e-mail. There is no password-recovery e-mail either — an administrator
+/// issues a new password instead (see [adminHelpKey]).
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,7 +27,10 @@ class LoginScreen extends ConsumerStatefulWidget {
   static const Key submitKey = Key('login.submit');
   static const Key logInTabKey = Key('login.tab.logIn');
   static const Key createTabKey = Key('login.tab.create');
-  static const Key forgotKey = Key('login.forgot');
+
+  /// The "an administrator can issue you a new password" note. There is no
+  /// self-service password recovery.
+  static const Key adminHelpKey = Key('login.adminHelp');
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -149,26 +156,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
               if (!creating) ...<Widget>[
-                const SizedBox(height: 4),
-                AppButton(
-                  key: LoginScreen.forgotKey,
-                  label: S.authForgot,
-                  variant: AppButtonVariant.text,
-                  onPressed:
-                      m.busy ? null : () => c.recoverPassword(_email.text),
+                const SizedBox(height: 12),
+                const AuthNote(
+                  S.authContactAdmin,
+                  key: LoginScreen.adminHelpKey,
                 ),
               ],
               MembershipErrorBanner(error: m.error, onDismiss: c.dismissError),
-              if (m.recoverySent) ...<Widget>[
-                const SizedBox(height: 12),
-                InfoBanner(
-                  message: S.authForgotSent(m.email),
-                  icon: Icons.mark_email_read_outlined,
-                  color: AppColors.gold,
-                  actionLabel: S.close,
-                  onTap: c.dismissError,
-                ),
-              ],
             ],
           ),
         ),

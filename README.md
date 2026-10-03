@@ -25,7 +25,7 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/main.dart` | Entry point: portrait lock, `SharedPreferences`, `ProviderScope` |
 | `lib/app.dart` | Root `MaterialApp` (dark theme, clamped text scale) |
 | `lib/app_providers.dart` | App-wide providers (preferences, repositories, sensors, wake lock, performance profile, clock) |
-| `lib/core/config/app_config.dart` | `kStoreBuild`, API / Supabase / site URLs (all `--dart-define`), tile-cache cap |
+| `lib/core/config/app_config.dart` | `kStoreBuild`, API / Supabase URLs (all `--dart-define`), tile-cache cap |
 | `lib/core/l10n/strings.dart` | **Every** user-visible string: English + authored isiZulu + translation key (`Bi(en, zu, key:, args:)`) |
 | `lib/core/l10n/app_language.dart` | App languages (English / isiZulu / Portuguese / Chichewa / Bemba), `translations.json` loader, fallback, Material locales |
 | `lib/core/perf/performance_profile.dart` | `low` / `normal` profile and the knobs it controls |
@@ -58,7 +58,7 @@ prayer can face it and a msamo (umsamo) can be positioned toward it.
 | `lib/features/msamo/…` | Msamo screen + lock controller |
 | `lib/features/location/…` | Live GPS, manual entry, town picker, pick-from-centres |
 | `lib/features/towns/…` | Searchable grouped town picker |
-| `lib/features/settings/…` | Language switcher + Simple mode (shown on the Guide tab) |
+| `lib/features/settings/…` | Language switcher (the header's language button + the Guide tab card) and Simple mode |
 | `lib/features/membership/…` | The login gate: `auth_gate.dart` (state machine → screens), e-mail + password auth, `/api/me`, forced password change, trial page, paywall, account screen, admin tools |
 | `lib/features/centres/…` | Map, clustering, search, nearest, grouped list, bottom sheet |
 | `lib/features/guide/…` | Guide screen (coordinates, steps, accuracy, about) |
@@ -185,11 +185,12 @@ Added with the sensor ladder:
 | `test/features/calibration_and_gps_test.dart` | Sun / north calibration offset math (true vs magnetic), GPS course accepted only while walking and flagged true-north |
 | `test/core/l10n_test.dart` | One language at a time, fallback to English; locale suggestion; every `Bi` has a key, every key exists in every language with the same placeholders |
 | `test/data/centres_repository_test.dart`, `test/data/towns_repository_test.dart` | `GET /api/centres` parsing, sorting, grouping and the offline cache (mock `http.Client`); towns parsing, search and filtering |
-| `test/features/membership/auth_client_test.dart` | Supabase Auth error mapping (every GoTrue shape), sign-up without a session, recovery redirect, 4xx refresh, `/api/*` error codes |
+| `test/features/membership/auth_client_test.dart` | Supabase Auth error mapping (every GoTrue shape), sign-up returning the session, 4xx refresh, `/api/*` error codes |
 | `test/features/membership/membership_gate_test.dart` | The gate state machine: first run, trial page once per account, paywall, `403 password_change_required`, 401 sign-out, offline cache allowed / denied, access ending mid-session |
 | `test/features/membership/membership_widgets_test.dart` | Login validation, forced change has no back path (`PopScope`), store builds hide "Pay now", admin entry hidden for non-admins, the temporary password is gone once the dialog closes |
 | `test/features/membership/admin_controller_test.dart` | Admin search / add centre / generate password / delete user, including `admin_required`, `duplicate_centre`, `invalid_centre` fields and `cannot_delete_self` |
 | `test/core/performance_profile_test.dart` | Profile detection and the Simple-mode override |
+| `test/widgets/language_button_test.dart` | The header language button: visible on every screen, opens the sheet, applies and persists the choice, and every label follows it |
 
 ---
 
@@ -232,7 +233,6 @@ flutter build appbundle --release
 #   --dart-define=MEMBERSHIP_API_BASE_URL=https://api.example.org
 #   --dart-define=SUPABASE_URL=https://<project>.supabase.co
 #   --dart-define=SUPABASE_ANON_KEY=<anon key>
-#   --dart-define=SITE_URL=https://example.org   (password-reset page: {SITE_URL}/reset)
 # Optional:
 #   --dart-define=STORE_BUILD=true               hide every purchase control
 ```
@@ -341,9 +341,11 @@ when the app goes to the background and restarted on resume.
 
 ## Languages
 
-The app is shown in **one language at a time**, chosen under *Settings →
-Language* on the Guide tab: **English, isiZulu, Português, Chichewa or
-iciBemba**. The chosen language replaces all text — tabs, headings, buttons,
+The app is shown in **one language at a time**: **English, isiZulu, Português,
+Chichewa or iciBemba**. The choice is on screen from the first frame — the
+header carries a language button (a globe plus the active code, `EN`) on every
+screen, the login and paywall ones included, and the full switcher also sits
+under *Settings → Language* at the bottom of the Guide tab. The chosen language replaces all text — tabs, headings, buttons,
 readouts, status lines, messages, snackbars, hints, tooltips and accessibility
 labels — and switching takes effect immediately, without restarting the
 compass. Compass letters follow the language too (Portuguese uses L / O for
@@ -386,7 +388,6 @@ One state machine decides what is shown — `lib/features/membership/membership_
 | --- | --- | --- |
 | `loading` | crest + spinner | restoring the stored session, first `/api/me` |
 | `signedOut` | log in / create account | no session, or a 401 from our API |
-| `awaitingEmailConfirm` | "check your e-mail" | sign-up with confirmation on, or `email_not_confirmed` |
 | `mustChangePassword` | forced password change | `/api/me` says `must_change_password`, or any `/api/*` answers `403 password_change_required` |
 | `trialIntro` | what the trial includes + "Pay now" | first login of a trial account (once per user id) |
 | `paywall` | why there is no access + "Pay now" | the server says `access:false` |
@@ -412,9 +413,13 @@ Rules the gate keeps:
   coming back, `/api/me` is polled. Cancelling keeps access until the paid
   month ends. All of it is hidden when `kStoreBuild` is true.
 
-**Forgot password** sends the member a Supabase recovery link
-(`POST /auth/v1/recover?redirect_to={SITE_URL}/reset`) — the link opens the web
-page in the phone's browser, so the app needs no deep links.
+**No e-mail confirmation, no password recovery.** Creating an account signs the
+member in immediately (`POST /auth/v1/signup` answers with a session), and the
+login screen says that a forgotten password is issued by an administrator — the
+admin *auto-generate a password* tool below, followed by the forced change
+screen. The Supabase project therefore needs **Confirm email** switched off
+(Authentication ▸ Providers ▸ Email); with it on, a sign-up answers without a
+session and the app can only show "that did not work".
 
 **Admin tools** (Account ▸ Admin tools) appear only when `/api/me` returns
 `is_admin: true`, and every call is checked again by the server:
@@ -457,7 +462,7 @@ whenever the server answers 401 or 402.
 | Flag | Default | Effect |
 | --- | --- | --- |
 | `kStoreBuild` (`--dart-define=STORE_BUILD`) | `false` | Hides every purchase / subscribe / cancel control; sign-in and status remain |
-| `MEMBERSHIP_API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SITE_URL` | placeholders | Required at build time; see `lib/core/config/app_config.dart`. Nothing secret is committed — the anon key is a build argument |
+| `MEMBERSHIP_API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` | placeholders | Required at build time; see `lib/core/config/app_config.dart`. Nothing secret is committed — the anon key is a build argument |
 
 ---
 

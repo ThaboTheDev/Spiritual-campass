@@ -9,7 +9,6 @@ import '../compass/compass_controller.dart';
 import '../shell/app_shell.dart';
 import 'membership_controller.dart';
 import 'screens/change_password_screen.dart';
-import 'screens/confirm_email_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/paywall_screen.dart';
 import 'screens/trial_intro_screen.dart';
@@ -88,7 +87,6 @@ class _AuthGateState extends ConsumerState<AuthGate>
     return switch (phase) {
       AuthPhase.loading => const _Splash(),
       AuthPhase.signedOut => const LoginScreen(),
-      AuthPhase.awaitingEmailConfirm => const ConfirmEmailScreen(),
       AuthPhase.mustChangePassword => const ChangePasswordScreen(),
       AuthPhase.trialIntro => const TrialIntroScreen(),
       AuthPhase.paywall => const PaywallScreen(),

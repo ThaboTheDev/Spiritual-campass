@@ -52,16 +52,13 @@ enum AuthErrorKind {
   /// Wrong e-mail / password combination.
   invalidCredentials,
 
-  /// The account exists but the confirmation link has not been opened.
-  emailNotConfirmed,
-
   /// Sign-up for an address that already has an account.
   alreadyRegistered,
 
   /// Supabase refused the password (too short / breached).
   weakPassword,
 
-  /// Supabase is rate-limiting the e-mails or the attempts.
+  /// Supabase is rate-limiting the attempts.
   rateLimited,
 
   /// The device could not reach Supabase.
@@ -91,6 +88,11 @@ class AuthException implements Exception {
 /// has changed its error shape a few times, so both the modern
 /// `error_code` / `code` fields and the older `error` / `msg` /
 /// `error_description` texts are inspected.
+///
+/// E-mail confirmation is switched off in the project (see the README), so
+/// there is no "email not confirmed" case: an account is usable the moment it
+/// is created. Should a project ever answer that way it arrives as a 400
+/// `invalid_grant` and is shown as an ordinary failed login.
 AuthErrorKind mapSupabaseAuthError(int statusCode, Map<String, dynamic> body) {
   final String code = (body['error_code'] ?? body['code'] ?? body['error'] ?? '')
       .toString()
@@ -102,11 +104,6 @@ AuthErrorKind mapSupabaseAuthError(int statusCode, Map<String, dynamic> body) {
 
   bool says(String needle) => code.contains(needle) || message.contains(needle);
 
-  // "Email not confirmed" arrives as a 400 invalid_grant too, so it has to be
-  // checked before the credentials case.
-  if (code == 'email_not_confirmed' || message.contains('not confirmed')) {
-    return AuthErrorKind.emailNotConfirmed;
-  }
   if (code == 'invalid_credentials' ||
       code == 'invalid_grant' ||
       message.contains('invalid login credentials') ||
@@ -136,6 +133,10 @@ AuthErrorKind mapSupabaseAuthError(int statusCode, Map<String, dynamic> body) {
 
 /// Supabase Auth REST (no SDK), exactly as in the contract.
 ///
+/// E-mail confirmation and password recovery are **not** used: an account is
+/// ready the moment it is created, and a forgotten password is handled by an
+/// administrator (Account ▸ Admin tools ▸ auto-generate a password).
+///
 /// Passwords are only ever put in a request body; nothing in this class logs
 /// a password, a token or a response body.
 class SupabaseAuthClient {
@@ -143,16 +144,12 @@ class SupabaseAuthClient {
     http.Client? client,
     this.baseUrl = kSupabaseUrl,
     this.anonKey = kSupabaseAnonKey,
-    this.siteUrl = kSiteUrl,
     this.timeout = const Duration(seconds: 20),
   }) : _client = client ?? http.Client();
 
   final http.Client _client;
   final String baseUrl;
   final String anonKey;
-
-  /// Where the recovery e-mail should send the member (`{siteUrl}/reset`).
-  final String siteUrl;
   final Duration timeout;
 
   Map<String, String> get _headers => <String, String>{
@@ -163,22 +160,14 @@ class SupabaseAuthClient {
 
   /// `POST /auth/v1/signup {email, password}`.
   ///
-  /// With e-mail confirmation ON the answer carries no session: the caller
-  /// shows "check your e-mail".
+  /// Confirmation is off in the project, so the answer carries a session and
+  /// the member is signed in straight away.
   Future<SignUpResult> signUp(String email, String password) async {
     final Map<String, dynamic> body = await _post('/auth/v1/signup', <String, Object>{
       'email': email,
       'password': password,
     });
     return SignUpResult.fromJson(body, email: email);
-  }
-
-  /// `POST /auth/v1/resend {type:"signup", email}`.
-  Future<void> resendConfirmation(String email) async {
-    await _post('/auth/v1/resend', <String, Object>{
-      'type': 'signup',
-      'email': email,
-    });
   }
 
   /// `POST /auth/v1/token?grant_type=password {email, password}`.
@@ -188,18 +177,6 @@ class SupabaseAuthClient {
       <String, Object>{'email': email, 'password': password},
     );
     return AuthSession.fromTokenResponse(body, fallbackEmail: email);
-  }
-
-  /// `POST /auth/v1/recover?redirect_to={siteUrl}/reset {email}`.
-  ///
-  /// The e-mail link opens the web reset page in the phone's browser, so the
-  /// app needs no deep links.
-  Future<void> recover(String email) async {
-    final String redirect = Uri.encodeComponent('$siteUrl/reset');
-    await _post(
-      '/auth/v1/recover?redirect_to=$redirect',
-      <String, Object>{'email': email},
-    );
   }
 
   /// `POST /auth/v1/token?grant_type=refresh_token {refresh_token}`.
