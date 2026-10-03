@@ -243,13 +243,14 @@ void main() {
       expect(find.byType(ChangePasswordScreen), findsOneWidget);
 
       // The Android system back button ends in Navigator.maybePop, which
-      // PopScope(canPop: false) refuses.
-      final bool popped = await Navigator.maybePop(
+      // PopScope(canPop: false) intercepts (returning true to mark the back
+      // event handled while refusing to pop the route).
+      expect(navigator.canPop(), isFalse);
+      await Navigator.maybePop(
         tester.element(find.byType(ChangePasswordScreen)),
       );
       await tester.pumpAndSettle();
 
-      expect(popped, isFalse);
       expect(find.byType(ChangePasswordScreen), findsOneWidget);
       expect(find.text('behind the gate'), findsNothing);
     });
