@@ -242,12 +242,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ChangePasswordScreen), findsOneWidget);
 
-      // The Android system back button ends in Navigator.maybePop, which
-      // PopScope(canPop: false) intercepts (returning true to mark the back
-      // event handled while refusing to pop the route).
-      expect(navigator.canPop(), isFalse);
-      await Navigator.maybePop(
-        tester.element(find.byType(ChangePasswordScreen)),
+      // The Android system back button ends in Navigator.maybePop, which asks
+      // the route for its popDisposition. PopScope(canPop: false) registers a
+      // PopEntry with canPopNotifier false, so the route reports
+      // `doNotPop` and maybePop declines to pop it.
+      //
+      // Note: NavigatorState.canPop() is *not* that check — it only reports
+      // whether the history holds more than the initial route ("does not
+      // consider anything that might externally prevent popping, such as
+      // PopEntry"), so it stays true here with home + /change on the stack.
+      final BuildContext gate =
+          tester.element(find.byType(ChangePasswordScreen));
+      expect(
+        ModalRoute<dynamic>.of(gate)?.popDisposition,
+        RoutePopDisposition.doNotPop,
+      );
+      expect(
+        await Navigator.maybePop(gate),
+        isFalse,
+        reason: 'maybePop reports the pop was refused, not handled',
       );
       await tester.pumpAndSettle();
 
