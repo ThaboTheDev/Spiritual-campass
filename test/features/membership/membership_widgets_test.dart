@@ -244,8 +244,9 @@ void main() {
 
       // The Android system back button ends in Navigator.maybePop, which asks
       // the route for its popDisposition. PopScope(canPop: false) registers a
-      // PopEntry with canPopNotifier false, so the route reports
-      // `doNotPop` and maybePop declines to pop it.
+      // PopEntry with canPopNotifier false, so the route reports `doNotPop`.
+      // maybePop returns true because that back request was handled, even
+      // though the route was not popped.
       //
       // Note: NavigatorState.canPop() is *not* that check — it only reports
       // whether the history holds more than the initial route ("does not
@@ -259,8 +260,8 @@ void main() {
       );
       expect(
         await Navigator.maybePop(gate),
-        isFalse,
-        reason: 'maybePop reports the pop was refused, not handled',
+        isTrue,
+        reason: 'maybePop reports the back request was handled, not popped',
       );
       await tester.pumpAndSettle();
 
