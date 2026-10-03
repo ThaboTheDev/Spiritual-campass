@@ -23,6 +23,7 @@ class LanguageButton extends ConsumerWidget {
   /// Opens the language sheet.
   static Future<void> open(BuildContext context) => showModalBottomSheet<void>(
         context: context,
+        isScrollControlled: true,
         useSafeArea: true,
         backgroundColor: AppColors.surface,
         builder: (BuildContext sheetContext) => const LanguageSheet(),
@@ -97,54 +98,57 @@ class LanguageSheet extends ConsumerWidget {
     final AppLanguage language = ref.watch(languageProvider);
 
     // `showModalBottomSheet(useSafeArea: true)` already keeps the sheet clear
-    // of the system bars.
-    return Column(
-      key: sheetKey,
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: LocalizedText(
-                  S.language,
-                  style: theme.textTheme.titleSmall,
+    // of the system bars, and `SingleChildScrollView` prevents a bottom
+    // overflow on short screens or large text scales.
+    return SingleChildScrollView(
+      child: Column(
+        key: sheetKey,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: LocalizedText(
+                    S.language,
+                    style: theme.textTheme.titleSmall,
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: S.close.text,
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-          child: LocalizedText(
-            S.languageNote,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textMuted,
-              fontSize: 12,
+                IconButton(
+                  tooltip: S.close.text,
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
           ),
-        ),
-        const Divider(height: 1),
-        for (final AppLanguage option in AppLanguage.values)
-          _LanguageRow(
-            language: option,
-            selected: option == language,
-            onTap: () async {
-              await ref.read(languageProvider.notifier).set(option);
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: LocalizedText(
+              S.languageNote,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textMuted,
+                fontSize: 12,
+              ),
+            ),
           ),
-        const SizedBox(height: 8),
-      ],
+          const Divider(height: 1),
+          for (final AppLanguage option in AppLanguage.values)
+            _LanguageRow(
+              language: option,
+              selected: option == language,
+              onTap: () async {
+                await ref.read(languageProvider.notifier).set(option);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 }
