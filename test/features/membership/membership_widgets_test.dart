@@ -254,7 +254,7 @@ void main() {
       final BuildContext gate =
           tester.element(find.byType(ChangePasswordScreen));
       expect(
-        ModalRoute<dynamic>.of(gate)?.popDisposition,
+        ModalRoute.of<dynamic>(gate)?.popDisposition,
         RoutePopDisposition.doNotPop,
       );
       expect(
