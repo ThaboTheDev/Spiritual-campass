@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import '../../../core/geo/heading_quality.dart';
 import '../../../core/l10n/strings.dart';
 
 /// Which rung of the failover ladder a heading came from.
 enum HeadingSourceKind {
-  /// Platform-fused orientation. North reference is carried by every sample.
+  /// Platform-fused compass (flutter_compass). Magnetic.
   fusedCompass,
 
   /// Magnetometer + accelerometer, tilt compensated in Dart. Magnetic.
@@ -25,12 +24,12 @@ enum HeadingSourceKind {
 extension HeadingSourceKindX on HeadingSourceKind {
   /// Localised name for the status chip.
   Bi get label => switch (this) {
-    HeadingSourceKind.fusedCompass => S.srcFused,
-    HeadingSourceKind.rawSensors => S.srcRaw,
-    HeadingSourceKind.relativeCalibrated => S.srcRelative,
-    HeadingSourceKind.gpsCourse => S.srcGps,
-    HeadingSourceKind.sunOnly => S.srcSun,
-  };
+        HeadingSourceKind.fusedCompass => S.srcFused,
+        HeadingSourceKind.rawSensors => S.srcRaw,
+        HeadingSourceKind.relativeCalibrated => S.srcRelative,
+        HeadingSourceKind.gpsCourse => S.srcGps,
+        HeadingSourceKind.sunOnly => S.srcSun,
+      };
 }
 
 /// One heading sample from a [HeadingSource].
@@ -41,10 +40,7 @@ class HeadingSample {
     required this.timestamp,
     this.accuracyDeg,
     this.isProvisional = false,
-    this.assessment = HeadingAssessment.unknown,
   });
-
-  final HeadingAssessment assessment;
 
   /// Heading in degrees, 0 .. 360, clockwise. Magnetic unless [isTrueNorth].
   final double headingDeg;
@@ -56,7 +52,7 @@ class HeadingSample {
   /// When the underlying sensor sample was taken.
   final DateTime timestamp;
 
-  /// Reported angular error (±), if genuinely provided, never invented.
+  /// Estimated error in degrees (±), when known.
   final double? accuracyDeg;
 
   /// A sample that keeps the source alive but is not yet an absolute heading

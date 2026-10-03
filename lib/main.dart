@@ -20,6 +20,7 @@ Future<void> main() async {
   // The compass and the dial are designed for portrait.
   await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
     DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
   ]);
 
   // Translation tables (Portuguese / Chichewa / Bemba, plus isiZulu). A
@@ -27,9 +28,7 @@ Future<void> main() async {
   // and isiZulu are authored in code and always work.
   try {
     L10n.install(
-      Translations.parse(
-        await rootBundle.loadString('assets/translations.json'),
-      ),
+      Translations.parse(await rootBundle.loadString('assets/translations.json')),
     );
   } catch (_) {
     L10n.install(const Translations.empty());

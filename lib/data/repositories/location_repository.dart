@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/geo/coordinates.dart';
@@ -54,9 +53,6 @@ abstract class LocationRepository {
   /// One-shot fix. Returns `null` when no fix could be obtained.
   Future<GeoPoint?> getCurrentPoint();
 
-  /// Cancel owned one-shot work when the app stops / goes into the background.
-  void cancelPendingFixes();
-
   /// Continuous updates while the app is in use.
   Stream<GeoPoint> get positionStream;
 
@@ -76,60 +72,14 @@ abstract class LocationRepository {
 
 /// geolocator-backed implementation of [LocationRepository].
 class GeolocatorLocationRepository implements LocationRepository {
-  GeolocatorLocationRepository({LocationSettings? locationSettings})
-    : _locationSettings = locationSettings ?? _platformSettings();
-
-  static LocationSettings _platformSettings() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 0,
-        intervalDuration: const Duration(seconds: 1),
-      );
-    }
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      return AppleSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 0,
-        activityType: ActivityType.otherNavigation,
-        pauseLocationUpdatesAutomatically: false,
-        allowBackgroundLocationUpdates: false,
-      );
-    }
-    return const LocationSettings(
+  GeolocatorLocationRepository({
+    LocationSettings locationSettings = const LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 0,
-    );
-  }
+      distanceFilter: 5,
+    ),
+  }) : _locationSettings = locationSettings;
 
   final LocationSettings _locationSettings;
-  // Unknown/reduced permission is never silently promoted to precise.
-  bool _approximate = true;
-  int _accuracyGeneration = 0;
-  Completer<GeoPoint?>? _pendingFix;
-  StreamSubscription<GeoPoint>? _fixSubscription;
-  Timer? _fixTimer;
-
-  Future<void> _refreshAccuracyStatus() async {
-    final int generation = ++_accuracyGeneration;
-    try {
-      final LocationAccuracyStatus status =
-          await Geolocator.getLocationAccuracy().timeout(
-            const Duration(seconds: 3),
-          );
-      if (generation == _accuracyGeneration) {
-        _approximate = status != LocationAccuracyStatus.precise;
-      }
-    } catch (_) {
-      if (generation == _accuracyGeneration) {
-        _approximate = true;
-      }
-    }
-  }
-
-  GeoPoint _point(Position position) => position.toGeoPoint().copyWith(
-    isApproximate: _approximate || position.isMocked,
-  );
 
   @override
   Future<bool> isServiceEnabled() => Geolocator.isLocationServiceEnabled();
@@ -137,13 +87,7 @@ class GeolocatorLocationRepository implements LocationRepository {
   @override
   Future<LocationAccess> checkAccess() async {
     final LocationPermission permission = await Geolocator.checkPermission();
-    final LocationAccess access = _mapPermission(permission);
-    if (access.canRequestFix) {
-      await _refreshAccuracyStatus();
-    } else {
-      _approximate = true;
-    }
-    return access;
+    return _mapPermission(permission);
   }
 
   @override
@@ -153,97 +97,18 @@ class GeolocatorLocationRepository implements LocationRepository {
       return LocationAccess.serviceDisabled;
     }
     final LocationPermission permission = await Geolocator.requestPermission();
-    final LocationAccess access = _mapPermission(permission);
-    if (access.canRequestFix) {
-      await _refreshAccuracyStatus();
-    } else {
-      _approximate = true;
-    }
-    return access;
+    return _mapPermission(permission);
   }
 
   @override
-  Future<GeoPoint?> getCurrentPoint() {
-    final Completer<GeoPoint?>? current = _pendingFix;
-    if (current != null) {
-      return current.future;
-    }
-    final Completer<GeoPoint?> pending = Completer<GeoPoint?>();
-    _pendingFix = pending;
-    void finish(GeoPoint? point) {
-      if (!identical(_pendingFix, pending)) {
-        return;
-      }
-      _pendingFix = null;
-      _fixTimer?.cancel();
-      _fixTimer = null;
-      final StreamSubscription<GeoPoint>? subscription = _fixSubscription;
-      _fixSubscription = null;
-      if (subscription != null) {
-        unawaited(
-          subscription
-              .cancel()
-              .timeout(const Duration(seconds: 1))
-              .catchError((Object _) {}),
-        );
-      }
-      if (!pending.isCompleted) {
-        pending.complete(point);
-      }
-    }
-
-    // Use an owned stream instead of Future.timeout(getCurrentPosition):
-    // timing out a future alone does not cancel the native GPS request.
-    _fixTimer = Timer(const Duration(seconds: 25), () => finish(null));
+  Future<GeoPoint?> getCurrentPoint() async {
     try {
-      final StreamSubscription<GeoPoint> subscription = positionStream.listen(
-        (GeoPoint point) => finish(point),
-        onError: (Object _, StackTrace __) => finish(null),
-        onDone: () => finish(null),
+      final Position position = await Geolocator.getCurrentPosition(
+        locationSettings: _locationSettings,
       );
-      if (identical(_pendingFix, pending)) {
-        _fixSubscription = subscription;
-      } else {
-        unawaited(
-          subscription
-              .cancel()
-              .timeout(const Duration(seconds: 1))
-              .catchError((Object _) {}),
-        );
-      }
-    } catch (_) {
-      finish(null);
-    }
-    return pending.future;
-  }
-
-  @override
-  void cancelPendingFixes() {
-    final Completer<GeoPoint?>? pending = _pendingFix;
-    _pendingFix = null;
-    _fixTimer?.cancel();
-    _fixTimer = null;
-    final StreamSubscription<GeoPoint>? subscription = _fixSubscription;
-    _fixSubscription = null;
-    if (subscription != null) {
-      unawaited(
-        subscription
-            .cancel()
-            .timeout(const Duration(seconds: 1))
-            .catchError((Object _) {}),
-      );
-    }
-    if (pending != null && !pending.isCompleted) {
-      pending.complete(null);
-    }
-  }
-
-  @override
-  Future<GeoPoint?> getLastKnownPoint() async {
-    try {
-      final Position? position = await Geolocator.getLastKnownPosition()
-          .timeout(const Duration(seconds: 3));
-      return position == null ? null : _point(position);
+      return position.toGeoPoint();
+    } on LocationServiceDisabledException {
+      return null;
     } on PermissionDeniedException {
       return null;
     } on TimeoutException {
@@ -252,10 +117,19 @@ class GeolocatorLocationRepository implements LocationRepository {
   }
 
   @override
+  Future<GeoPoint?> getLastKnownPoint() async {
+    try {
+      final Position? position = await Geolocator.getLastKnownPosition();
+      return position?.toGeoPoint();
+    } on PermissionDeniedException {
+      return null;
+    }
+  }
+
+  @override
   Stream<GeoPoint> get positionStream {
-    return Geolocator.getPositionStream(
-      locationSettings: _locationSettings,
-    ).map(_point);
+    return Geolocator.getPositionStream(locationSettings: _locationSettings)
+        .map((Position position) => position.toGeoPoint());
   }
 
   @override
@@ -293,19 +167,14 @@ class GeolocatorLocationRepository implements LocationRepository {
 /// Converts a geolocator [Position] into the app's own [GeoPoint].
 extension PositionToGeoPoint on Position {
   GeoPoint toGeoPoint() => GeoPoint(
-    latitude: latitude,
-    longitude: longitude,
-    altitudeMetres: altitude.isFinite ? altitude : null,
-    accuracyMetres: accuracy.isFinite && accuracy > 0 ? accuracy : null,
-    timestamp: timestamp,
-    isApproximate: isMocked,
-    speedAccuracyMps: speedAccuracy.isFinite && speedAccuracy >= 0
-        ? speedAccuracy
-        : null,
-    speedMps: speed.isFinite && speed >= 0 ? speed : null,
-    courseDeg: heading.isFinite && heading >= 0 ? heading : null,
-    courseAccuracyDeg: headingAccuracy.isFinite && headingAccuracy > 0
-        ? headingAccuracy
-        : null,
-  );
+        latitude: latitude,
+        longitude: longitude,
+        altitudeMetres: altitude,
+        accuracyMetres: accuracy,
+        speedMps: speed.isFinite && speed >= 0 ? speed : null,
+        courseDeg: heading.isFinite && heading >= 0 ? heading : null,
+        courseAccuracyDeg: headingAccuracy.isFinite && headingAccuracy > 0
+            ? headingAccuracy
+            : null,
+      );
 }

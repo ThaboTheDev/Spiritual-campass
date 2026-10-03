@@ -1,29 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/l10n/strings.dart';
-import '../../core/perf/performance_profile.dart';
 import '../../core/sun/facing_sun.dart';
 import '../../core/sun/sun_position.dart';
+import '../../app_providers.dart';
+import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
-import '../../widgets/localized_text.dart';
 import '../location/location_controller.dart';
 import 'compass_controller.dart';
 import 'compass_providers.dart';
 import 'widgets/calibration_controls.dart';
 import 'widgets/compass_dial.dart';
 import 'widgets/level_bubble.dart';
-import 'widgets/quality_guidance.dart';
 import 'widgets/readout_grid.dart';
 import 'widgets/source_chip.dart';
 import 'widgets/sun_guidance_card.dart';
@@ -43,25 +42,17 @@ class CompassScreen extends ConsumerWidget {
     final double? magneticBearing = ref.watch(magneticBearingProvider);
     final SunPosition? sun = ref.watch(sunPositionProvider).valueOrNull;
 
-    final double? heading = compass.dialHeadingDeg;
-    final double? dialBearing = compass.trueHeadingDeg != null
-        ? (target?.isNearTarget == true ? null : target?.bearingDeg)
-        : (target?.isNearTarget == true ? null : magneticBearing);
-    final bool aligned = compass.isAlignedTo(
-      target,
-      ref.read(compassClockProvider)(),
-    );
-    final double? facingHeading =
-        compass.isTravelDirection || !compass.hasHeading
-        ? null
-        : compass.trueHeadingDeg;
+    final double? heading = compass.trueHeadingDeg ?? compass.magneticHeadingDeg;
+    final bool hasTarget = target != null;
+    final bool aligned = hasTarget &&
+        heading != null &&
+        Angles.difference(heading, target.bearingDeg) <=
+            CompassDial.alignmentToleranceDeg;
+
     final FacingSunResult facing = sun == null
         ? const FacingSunResult(
-            facing: SunFacing.unknown,
-            deltaDeg: 0,
-            hasHeading: false,
-          )
-        : FacingSun.evaluate(headingDeg: facingHeading, sun: sun);
+            facing: SunFacing.unknown, deltaDeg: 0, hasHeading: false)
+        : FacingSun.evaluate(headingDeg: heading, sun: sun);
 
     return SafeArea(
       bottom: false,
@@ -97,18 +88,16 @@ class CompassScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              QualityGuidance(compass: compass, target: target),
-              const SizedBox(height: 12),
-
               // Dial (+ start button when the compass is off).
               _DialSection(
                 compass: compass,
                 heading: heading,
-                targetBearing: dialBearing,
+                targetBearing: target?.bearingDeg,
                 aligned: aligned,
                 simple: !perf.useGradients,
-                onStart: () =>
-                    ref.read(compassControllerProvider.notifier).start(),
+                onStart: () => ref
+                    .read(compassControllerProvider.notifier)
+                    .start(),
               ),
               const SizedBox(height: 16),
 
@@ -125,6 +114,16 @@ class CompassScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
               ],
 
+              // GPS rung: needs a few steps.
+              if (compass.waitingForWalk && !compass.isStale) ...<Widget>[
+                const InfoBanner(
+                  message: S.walkForDirection,
+                  icon: Icons.directions_walk,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // Relative source: one-tap calibration.
               if (compass.isActive &&
                   (compass.awaitingCalibration ||
@@ -134,21 +133,22 @@ class CompassScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
               ],
 
+              if (compass.needsCalibration && compass.isRunning) ...<Widget>[
+                const InfoBanner(
+                  message: S.calibrateHint,
+                  icon: Icons.screen_rotation_outlined,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // No usable sensor (or waiting for calibration): use the sun.
-              if (compass.isSunOnly ||
-                  compass.awaitingCalibration ||
-                  (compass.isActive &&
-                      !compass.hasHeading &&
-                      !compass.isTravelDirection)) ...<Widget>[
+              if (compass.isSunOnly || compass.awaitingCalibration) ...<Widget>[
                 SunGuidanceCard(
                   sun: sun,
                   target: target,
                   declinationDeg: declination,
-                  reason: compass.isSunOnly
-                      ? (compass.isTravelDirection
-                            ? S.travelDirectionNotice
-                            : S.sunWhyNone)
-                      : null,
+                  reason: compass.isSunOnly ? S.sunWhyNone : null,
                 ),
                 const SizedBox(height: 8),
                 if (compass.isSunOnly)
@@ -187,28 +187,26 @@ class CompassScreen extends ConsumerWidget {
                     caption: sun == null
                         ? null
                         : (sun.isAboveHorizon
-                              ? S.aboveHorizon.text
-                              : S.belowHorizon.text),
+                            ? S.aboveHorizon.text
+                            : S.belowHorizon.text),
                     icon: Icons.wb_sunny_outlined,
                   ),
                   ReadoutCard(
                     label: S.facingSun,
-                    value: _facingSunValue(facing, sun, facingHeading),
+                    value: _facingSunValue(facing, sun, heading),
                     caption: _facingSunCaption(facing, sun),
                     icon: Icons.visibility_outlined,
                   ),
                   if (sun != null && sun.castsShadow)
                     ReadoutCard(
                       label: S.stickShadow,
-                      value: Formatters.bearingWithCardinal(
-                        sun.shadowBearingDeg,
-                      ),
+                      value: Formatters.bearingWithCardinal(sun.shadowBearingDeg),
                       caption: S.shadowHint.text,
                       icon: Icons.north_east_outlined,
                     ),
                   ReadoutCard(
                     label: S.bearingTrue,
-                    value: target == null || target.isNearTarget
+                    value: target == null
                         ? '—'
                         : Formatters.bearingWithCardinal(target.bearingDeg),
                     caption: target == null ? S.notSetHint.text : null,
@@ -239,8 +237,8 @@ class CompassScreen extends ConsumerWidget {
                     caption: declination == null
                         ? S.notSetHint.text
                         : (declination < 0
-                              ? S.declinationWest.text
-                              : S.declinationEast.text),
+                            ? S.declinationWest.text
+                            : S.declinationEast.text),
                     icon: Icons.swap_horiz_outlined,
                   ),
                   ReadoutCard(
@@ -250,8 +248,8 @@ class CompassScreen extends ConsumerWidget {
                         : '—',
                     caption: location.hasPoint
                         ? (location.isManual
-                              ? S.sourceManual.text
-                              : S.sourceGps.text)
+                            ? S.sourceManual.text
+                            : S.sourceGps.text)
                         : S.notSetHint.text,
                     icon: Icons.place_outlined,
                   ),
@@ -263,10 +261,10 @@ class CompassScreen extends ConsumerWidget {
                 child: LocalizedText(
                   S.compassHelp,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
                 ),
               ),
 
@@ -298,10 +296,7 @@ class CompassScreen extends ConsumerWidget {
   }
 
   String _facingSunValue(
-    FacingSunResult facing,
-    SunPosition? sun,
-    double? heading,
-  ) {
+      FacingSunResult facing, SunPosition? sun, double? heading) {
     if (sun == null) {
       return '—';
     }
@@ -369,14 +364,10 @@ class _StatusLine extends StatelessWidget {
       CompassStatus.error => S.compassError,
       CompassStatus.running when compass.awaitingCalibration =>
         S.compassNeedsCal,
-      CompassStatus.running when compass.waitingForWalk => S.walkForDirection,
-      CompassStatus.running when !compass.hasHeading => S.directionUnreliable,
-      CompassStatus.running when compass.isTravelDirection =>
-        S.travelDirectionMode,
-      CompassStatus.running =>
-        compass.trueHeadingDeg != null
-            ? S.compassTrue(Formatters.bearing(compass.trueHeadingDeg))
-            : S.compassMagnetic(Formatters.bearing(compass.magneticHeadingDeg)),
+      CompassStatus.running when !compass.hasHeading => S.compassWaiting,
+      CompassStatus.running => compass.trueHeadingDeg != null
+          ? S.compassTrue(Formatters.bearing(compass.trueHeadingDeg))
+          : S.compassMagnetic(Formatters.bearing(compass.magneticHeadingDeg)),
     };
 
     return SectionCard(
@@ -427,7 +418,7 @@ class _DialSection extends StatelessWidget {
   Widget build(BuildContext context) {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
-    final bool active = compass.hasHeading;
+    final bool active = compass.isRunning;
 
     return Column(
       children: <Widget>[
@@ -442,7 +433,6 @@ class _DialSection extends StatelessWidget {
                   targetBearingDeg: targetBearing,
                   aligned: aligned,
                   active: active,
-                  travelDirection: compass.isTravelDirection,
                   simple: simple,
                   size: 288,
                 ),
@@ -504,16 +494,11 @@ class _DialSection extends StatelessWidget {
         LocalizedText(
           aligned
               ? S.aligned
-              : (heading != null &&
-                        targetBearing != null &&
-                        Angles.difference(heading!, targetBearing!) <=
-                            CompassDial.alignmentToleranceDeg
-                    ? S.alignmentUnconfirmed
-                    : (targetBearing == null
-                          ? S.notSetHint
-                          : S.bearingValue(
-                              Formatters.bearingWithCardinal(targetBearing),
-                            ))),
+              : (targetBearing == null
+                  ? S.notSetHint
+                  : S.bearingValue(
+                      Formatters.bearingWithCardinal(targetBearing),
+                    )),
           style: theme.textTheme.titleSmall?.copyWith(
             color: aligned ? AppColors.gold : AppColors.textPrimary,
           ),
@@ -544,7 +529,8 @@ class _LocationHelpBanner extends ConsumerWidget {
       icon: Icons.location_off_outlined,
       color: AppColors.warning,
       actionLabel: S.openSettings,
-      onTap: () => ref.read(locationControllerProvider.notifier).openSettings(),
+      onTap: () =>
+          ref.read(locationControllerProvider.notifier).openSettings(),
     );
   }
 }

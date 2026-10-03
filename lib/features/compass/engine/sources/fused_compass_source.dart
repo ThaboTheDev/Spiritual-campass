@@ -1,31 +1,33 @@
 import 'dart:async';
 
-import '../../../../core/geo/heading_quality.dart';
-import '../../../../core/wmm/wmm.dart';
 import '../../../../services/compass_service.dart';
 import '../heading_source.dart';
 
-/// Prefer OS fusion. Keep the measured timestamp, north reference, real
-/// accuracy and calibration status; do not relabel vendor HIGH as ±15°.
+/// Rung 1: the platform's fused compass heading via flutter_compass.
+///
+/// This is exactly what the app did before the ladder existed: magnetic
+/// heading, with the platform's own tilt compensation and fusion. Android
+/// delivers `null` headings on phones without a magnetometer (or before the
+/// sensor has calibrated); those are dropped, so a phone that only ever sends
+/// nulls simply times out and the ladder moves on to raw sensors.
 class FusedCompassSource implements HeadingSource {
-  FusedCompassSource(this._service, {this.expectedField, this.modelValid});
+  FusedCompassSource(this._service);
 
   final CompassService _service;
-  final MagneticField? Function()? expectedField;
-  final bool Function()? modelValid;
 
   @override
   HeadingSourceKind get kind => HeadingSourceKind.fusedCompass;
+
   @override
   Duration? get acquireTimeout => null;
+
   @override
   Duration? get staleTimeout => null;
 
   @override
   Future<bool> isAvailable() async {
     try {
-      return _service.isSupported &&
-          (await _service.capabilities()).absoluteOrientation;
+      return _service.isSupported;
     } catch (_) {
       return false;
     }
@@ -35,40 +37,17 @@ class FusedCompassSource implements HeadingSource {
   Stream<HeadingSample> start() {
     final Stream<CompassReading>? readings = _service.readings;
     if (readings == null) {
-      return Stream<HeadingSample>.error(StateError('No native compass'));
+      return Stream<HeadingSample>.error(StateError('No compass on this platform'));
     }
-    final MagneticQualityMonitor monitor = MagneticQualityMonitor();
-    return readings.map((CompassReading reading) {
-      final double? heading = reading.facingHeadingDeg;
-      final HeadingAssessment assessment;
-      if (reading.reference == NorthReference.relative) {
-        assessment = const HeadingAssessment(
-          HeadingConfidence.unreliable,
-          HeadingIssue.calibrationRequired,
+    return readings
+        .where((CompassReading reading) => reading.hasHeading)
+        .map<HeadingSample>(
+          (CompassReading reading) => HeadingSample(
+            headingDeg: reading.headingDeg!,
+            isTrueNorth: false,
+            accuracyDeg: reading.accuracyDeg,
+            timestamp: DateTime.now(),
+          ),
         );
-      } else {
-        assessment = monitor.assess(
-          timestamp: reading.timestamp,
-          headingDeg: heading,
-          accuracyDeg: reading.accuracyDeg,
-          reliability: reading.reliability,
-          magneticMicrotesla: reading.magneticMicrotesla,
-          gravity: reading.gravity,
-          linearAcceleration: reading.linearAcceleration,
-          gyroscope: reading.gyroscope,
-          expectedField: expectedField?.call(),
-          modelValid:
-              reading.reference == NorthReference.trueNorth ||
-              (modelValid?.call() ?? true),
-        );
-      }
-      return HeadingSample(
-        headingDeg: heading ?? double.nan,
-        isTrueNorth: reading.reference == NorthReference.trueNorth,
-        accuracyDeg: reading.accuracyDeg == 0 ? null : reading.accuracyDeg,
-        timestamp: reading.timestamp,
-        assessment: assessment,
-      );
-    });
   }
 }
