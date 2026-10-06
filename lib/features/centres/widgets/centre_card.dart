@@ -4,9 +4,9 @@ import '../../../core/l10n/strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/centre.dart';
 import '../../../services/navigation_launcher.dart';
-import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
+import '../../../widgets/localized_text.dart';
 
 /// One centre in the grouped list: name, address, phone and the three actions.
 class CentreCard extends StatelessWidget {

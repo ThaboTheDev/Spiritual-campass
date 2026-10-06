@@ -119,8 +119,7 @@ class _AppTabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
-    final Color foreground =
-        selected ? AppColors.accent : AppColors.textMuted;
+    final Color foreground = selected ? AppColors.accent : AppColors.textMuted;
 
     return Semantics(
       button: true,
@@ -150,18 +149,34 @@ class _AppTabButton extends StatelessWidget {
                     color: foreground,
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    tab.label.text,
-                    style: (theme.textTheme.labelSmall ?? const TextStyle())
-                        .copyWith(
-                      color: foreground,
-                      fontSize: 11,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
+                  SizedBox(
+                    width: double.infinity,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        tab.label.text,
+                        style: (theme.textTheme.labelSmall ?? const TextStyle())
+                            .copyWith(
+                              color: foreground,
+                              fontSize: 11,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                        maxLines: 1,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 3),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    width: selected ? 12 : 0,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.accent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ],
               ),

@@ -6,13 +6,12 @@ import 'package:tshk_compass/features/compass/engine/heading_ladder.dart';
 import 'package:tshk_compass/features/compass/engine/heading_source.dart';
 
 /// A scripted rung: optionally unavailable, optionally silent, otherwise
-/// emitting one sample every [period] until [stopAfter] samples.
+/// emitting one sample every 100 ms until [stopAfter] samples.
 class _FakeSource implements HeadingSource {
   _FakeSource(
     this.kind, {
     this.available = true,
     this.silent = false,
-    this.period = const Duration(milliseconds: 100),
     this.stopAfter,
     this.isTrue = false,
     this.provisional = false,
@@ -22,7 +21,6 @@ class _FakeSource implements HeadingSource {
   final HeadingSourceKind kind;
   final bool available;
   final bool silent;
-  final Duration period;
   final int? stopAfter;
   final bool isTrue;
   final bool provisional;
@@ -51,7 +49,7 @@ class _FakeSource implements HeadingSource {
         if (silent || (stopAfter != null && emitted >= stopAfter!)) {
           return;
         }
-        _timer = Timer.periodic(period, (Timer t) {
+        _timer = Timer.periodic(const Duration(milliseconds: 100), (Timer t) {
           if (stopAfter != null && emitted >= stopAfter!) {
             t.cancel();
             return; // go quiet: the ladder must notice staleness
