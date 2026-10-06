@@ -25,6 +25,7 @@ class PaywallScreen extends ConsumerWidget {
   final bool storeBuild;
 
   static const Key payKey = Key('paywall.pay');
+  static const Key restoreKey = Key('paywall.restore');
   static const Key retryKey = Key('paywall.retry');
   static const Key logOutKey = Key('paywall.logOut');
 
@@ -33,8 +34,9 @@ class PaywallScreen extends ConsumerWidget {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final MembershipState m = ref.watch(membershipControllerProvider);
-    final MembershipController c =
-        ref.read(membershipControllerProvider.notifier);
+    final MembershipController c = ref.read(
+      membershipControllerProvider.notifier,
+    );
     final Entitlement? e = m.entitlement;
     final String price = e?.priceLabel ?? 'R100';
 
@@ -49,14 +51,18 @@ class PaywallScreen extends ConsumerWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Icon(Icons.info_outline,
-                      size: 18, color: AppColors.warning),
+                  const Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: AppColors.warning,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: LocalizedText(
                       _reason(e),
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -65,8 +71,9 @@ class PaywallScreen extends ConsumerWidget {
                 const SizedBox(height: 6),
                 Text(
                   m.email,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
               if (e?.state == EntitlementState.grace) ...<Widget>[
@@ -74,9 +81,26 @@ class PaywallScreen extends ConsumerWidget {
                 const AuthNote(S.payGraceNote),
               ],
               const SizedBox(height: 14),
-              if (storeBuild)
-                const AuthNote(S.payStore)
-              else ...<Widget>[
+              if (storeBuild) ...<Widget>[
+                const AuthNote(S.storePlans),
+                const SizedBox(height: 10),
+                AppButton(
+                  key: PaywallScreen.payKey,
+                  label: S.storePlans,
+                  icon: Icons.shopping_bag_outlined,
+                  onPressed: m.busy ? null : c.startStorePurchase,
+                  expand: true,
+                ),
+                const SizedBox(height: 8),
+                AppButton(
+                  key: PaywallScreen.restoreKey,
+                  label: S.storeRestore,
+                  icon: Icons.restore,
+                  variant: AppButtonVariant.outlined,
+                  onPressed: m.busy ? null : c.restoreStorePurchases,
+                  expand: true,
+                ),
+              ] else ...<Widget>[
                 AuthNote(S.payOffer(price)),
                 const SizedBox(height: 10),
                 AppButton(
@@ -105,8 +129,7 @@ class PaywallScreen extends ConsumerWidget {
                       label: S.retry,
                       icon: Icons.refresh,
                       variant: AppButtonVariant.outlined,
-                      onPressed:
-                          m.busy ? null : () => c.refreshEntitlement(),
+                      onPressed: m.busy ? null : () => c.refreshEntitlement(),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -166,8 +189,9 @@ class OfflineLockedScreen extends ConsumerWidget {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final MembershipState m = ref.watch(membershipControllerProvider);
-    final MembershipController c =
-        ref.read(membershipControllerProvider.notifier);
+    final MembershipController c = ref.read(
+      membershipControllerProvider.notifier,
+    );
 
     return AuthScaffold(
       children: <Widget>[
@@ -185,8 +209,9 @@ class OfflineLockedScreen extends ConsumerWidget {
                 const SizedBox(height: 6),
                 Text(
                   m.email,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
               const SizedBox(height: 14),
@@ -198,8 +223,7 @@ class OfflineLockedScreen extends ConsumerWidget {
                       label: S.retry,
                       icon: Icons.refresh,
                       variant: AppButtonVariant.outlined,
-                      onPressed:
-                          m.busy ? null : () => c.refreshEntitlement(),
+                      onPressed: m.busy ? null : () => c.refreshEntitlement(),
                     ),
                   ),
                   const SizedBox(width: 8),

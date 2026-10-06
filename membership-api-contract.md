@@ -110,6 +110,7 @@ arrives server-side via PayFast ITN).
   offline never signs anyone out.
 - A cached `must_change_password` still blocks entry: that one can only be
   cleared online.
-- Store builds (`kStoreBuild = true`): hide every purchase / subscribe /
-  cancel control — including the trial page's "Pay now" — keeping sign-in and
-  status only.
+- Store builds (`kStoreBuild = true`): use RevenueCat in-app purchases and
+  Customer Center, not PayFast. RevenueCat webhook events must update the
+  server-side entitlement before `/api/me` grants access. See
+  `revenuecat-backend-integration.md`.

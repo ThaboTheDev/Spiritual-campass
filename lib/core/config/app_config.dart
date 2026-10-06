@@ -19,11 +19,25 @@
 /// no site URL to redirect a browser to.
 library;
 
-/// Store builds (Google Play / App Store) hide every purchase or subscribe
-/// control — including the "Pay now" button on the trial page and the
-/// paywall — and keep only login and the membership status, to stay within
-/// the stores' in-app purchase rules.
-const bool kStoreBuild = bool.fromEnvironment('STORE_BUILD', defaultValue: false);
+/// Store builds (Google Play / App Store) use RevenueCat for purchases and
+/// subscription management instead of the web PayFast flow.
+const bool kStoreBuild = bool.fromEnvironment(
+  'STORE_BUILD',
+  defaultValue: false,
+);
+
+/// RevenueCat public SDK key. Supply a platform-specific key at build time;
+/// public SDK keys are safe to ship, but private RevenueCat secret keys are not.
+const String kRevenueCatApiKey = String.fromEnvironment(
+  'REVENUECAT_API_KEY',
+  defaultValue: '',
+);
+
+/// RevenueCat entitlement unlocked by any configured membership product.
+const String kRevenueCatEntitlementId = String.fromEnvironment(
+  'REVENUECAT_ENTITLEMENT_ID',
+  defaultValue: 'test_pro',
+);
 
 /// Our own API (the Vercel deployment of the web edition): `/api/me`,
 /// `/api/centres`, `/api/account/password`, `/api/payfast/*`, `/api/admin/*`.

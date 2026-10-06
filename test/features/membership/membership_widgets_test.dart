@@ -39,14 +39,23 @@ class FakeMembership extends MembershipController {
   Future<void> startCheckout() async => calls.add('checkout');
 
   @override
+  Future<void> startStorePurchase() async => calls.add('storePurchase');
+
+  @override
+  Future<void> restoreStorePurchases() async => calls.add('storeRestore');
+
+  @override
+  Future<void> openStoreCustomerCenter() async =>
+      calls.add('storeCustomerCenter');
+
+  @override
   Future<void> acknowledgeTrialIntro() async => calls.add('trialIntro');
 
   @override
   Future<void> refreshEntitlement({
     bool afterPayment = false,
     bool silent = false,
-  }) async =>
-      calls.add('refresh');
+  }) async => calls.add('refresh');
 
   @override
   Future<void> cancelSubscription() async => calls.add('cancel');
@@ -59,21 +68,20 @@ Entitlement entitlement({
   bool mustChangePassword = false,
   int trialDays = 7,
   DateTime? endsAt,
-}) =>
-    Entitlement(
-      email: 'member@example.org',
-      status: state.name,
-      state: state,
-      access: access,
-      canCancel: state == EntitlementState.active,
-      priceMinor: 100,
-      currency: 'ZAR',
-      trialDays: trialDays,
-      endsAt: endsAt ?? DateTime.now().toUtc().add(const Duration(days: 5)),
-      fetchedAt: DateTime.now().toUtc(),
-      isAdmin: isAdmin,
-      mustChangePassword: mustChangePassword,
-    );
+}) => Entitlement(
+  email: 'member@example.org',
+  status: state.name,
+  state: state,
+  access: access,
+  canCancel: state == EntitlementState.active,
+  priceMinor: 100,
+  currency: 'ZAR',
+  trialDays: trialDays,
+  endsAt: endsAt ?? DateTime.now().toUtc().add(const Duration(days: 5)),
+  fetchedAt: DateTime.now().toUtc(),
+  isAdmin: isAdmin,
+  mustChangePassword: mustChangePassword,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -97,20 +105,17 @@ void main() {
 
   /// Wraps a screen with the providers it reads.
   Widget host(Widget child, FakeMembership fake) => ProviderScope(
-        overrides: <Override>[
-          membershipControllerProvider.overrideWith(() => fake),
-          preferencesStoreProvider
-              .overrideWithValue(PreferencesStore(preferences)),
-        ],
-        child: MaterialApp(
-          theme: ThemeData.dark(),
-          home: child,
-        ),
-      );
+    overrides: <Override>[
+      membershipControllerProvider.overrideWith(() => fake),
+      preferencesStoreProvider.overrideWithValue(PreferencesStore(preferences)),
+    ],
+    child: MaterialApp(theme: ThemeData.dark(), home: child),
+  );
 
   group('login screen', () {
-    testWidgets('a malformed address is refused without a request',
-        (WidgetTester tester) async {
+    testWidgets('a malformed address is refused without a request', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -129,8 +134,9 @@ void main() {
       expect(find.text(S.authBadEmail.text), findsOneWidget);
     });
 
-    testWidgets('a missing password is refused too',
-        (WidgetTester tester) async {
+    testWidgets('a missing password is refused too', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -145,8 +151,9 @@ void main() {
       expect(find.text(S.authNoPassword.text), findsOneWidget);
     });
 
-    testWidgets('the password is hidden until the eye is tapped',
-        (WidgetTester tester) async {
+    testWidgets('the password is hidden until the eye is tapped', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -166,8 +173,9 @@ void main() {
       expect(tester.widget<TextField>(field).obscureText, isFalse);
     });
 
-    testWidgets('switching to "create account" shows the length hint',
-        (WidgetTester tester) async {
+    testWidgets('switching to "create account" shows the length hint', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -181,8 +189,9 @@ void main() {
       expect(find.byKey(LoginScreen.adminHelpKey), findsNothing);
     });
 
-    testWidgets('the log in half points at an administrator for a password',
-        (WidgetTester tester) async {
+    testWidgets('the log in half points at an administrator for a password', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.signedOut),
       );
@@ -196,8 +205,9 @@ void main() {
   });
 
   group('forced password change', () {
-    testWidgets('has no app bar, no back button and refuses to pop',
-        (WidgetTester tester) async {
+    testWidgets('has no app bar, no back button and refuses to pop', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(
           phase: AuthPhase.mustChangePassword,
@@ -209,13 +219,15 @@ void main() {
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(BackButton), findsNothing);
 
-      final PopScope<Object?> scope =
-          tester.widget<PopScope<Object?>>(find.byType(PopScope<Object?>));
+      final PopScope<Object?> scope = tester.widget<PopScope<Object?>>(
+        find.byType(PopScope<Object?>),
+      );
       expect(scope.canPop, isFalse);
     });
 
-    testWidgets('the Android back button does not escape the screen',
-        (WidgetTester tester) async {
+    testWidgets('the Android back button does not escape the screen', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.mustChangePassword),
       );
@@ -223,8 +235,9 @@ void main() {
         ProviderScope(
           overrides: <Override>[
             membershipControllerProvider.overrideWith(() => fake),
-            preferencesStoreProvider
-                .overrideWithValue(PreferencesStore(preferences)),
+            preferencesStoreProvider.overrideWithValue(
+              PreferencesStore(preferences),
+            ),
           ],
           child: MaterialApp(
             theme: ThemeData.dark(),
@@ -236,8 +249,9 @@ void main() {
         ),
       );
 
-      final NavigatorState navigator =
-          tester.state<NavigatorState>(find.byType(Navigator));
+      final NavigatorState navigator = tester.state<NavigatorState>(
+        find.byType(Navigator),
+      );
       navigator.pushNamed('/change');
       await tester.pumpAndSettle();
       expect(find.byType(ChangePasswordScreen), findsOneWidget);
@@ -252,8 +266,9 @@ void main() {
       // whether the history holds more than the initial route ("does not
       // consider anything that might externally prevent popping, such as
       // PopEntry"), so it stays true here with home + /change on the stack.
-      final BuildContext gate =
-          tester.element(find.byType(ChangePasswordScreen));
+      final BuildContext gate = tester.element(
+        find.byType(ChangePasswordScreen),
+      );
       expect(
         ModalRoute.of<dynamic>(gate)?.popDisposition,
         RoutePopDisposition.doNotPop,
@@ -269,8 +284,9 @@ void main() {
       expect(find.text('behind the gate'), findsNothing);
     });
 
-    testWidgets('mismatched passwords are caught before any request',
-        (WidgetTester tester) async {
+    testWidgets('mismatched passwords are caught before any request', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         const MembershipState(phase: AuthPhase.mustChangePassword),
       );
@@ -302,8 +318,9 @@ void main() {
   });
 
   group('trial page', () {
-    testWidgets('offers "Pay now" in a direct build',
-        (WidgetTester tester) async {
+    testWidgets('offers "Pay now" in a direct build', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.trialIntro,
@@ -318,8 +335,9 @@ void main() {
       expect(find.byKey(TrialIntroScreen.startKey), findsOneWidget);
     });
 
-    testWidgets('hides every purchase control in a store build',
-        (WidgetTester tester) async {
+    testWidgets('offers RevenueCat plans in a store build', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.trialIntro,
@@ -330,13 +348,14 @@ void main() {
         host(const TrialIntroScreen(storeBuild: true), fake),
       );
 
-      expect(find.byKey(TrialIntroScreen.payKey), findsNothing);
-      expect(find.text(S.payNow.text), findsNothing);
+      expect(find.byKey(TrialIntroScreen.payKey), findsOneWidget);
+      expect(find.text(S.storePlans.text), findsWidgets);
       expect(find.byKey(TrialIntroScreen.startKey), findsOneWidget);
     });
 
-    testWidgets('"Start using the app" marks the page as seen',
-        (WidgetTester tester) async {
+    testWidgets('"Start using the app" marks the page as seen', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.trialIntro,
@@ -354,27 +373,36 @@ void main() {
   });
 
   group('paywall', () {
-    testWidgets('a store build shows the notice instead of "Pay now"',
-        (WidgetTester tester) async {
-      final FakeMembership fake = FakeMembership(
-        MembershipState(
-          phase: AuthPhase.paywall,
-          entitlement: entitlement(
-            state: EntitlementState.expired,
-            access: false,
+    testWidgets(
+      'a store build shows the RevenueCat paywall and restore action',
+      (WidgetTester tester) async {
+        final FakeMembership fake = FakeMembership(
+          MembershipState(
+            phase: AuthPhase.paywall,
+            entitlement: entitlement(
+              state: EntitlementState.expired,
+              access: false,
+            ),
           ),
-        ),
-      );
-      await tester.pumpWidget(
-        host(const PaywallScreen(storeBuild: true), fake),
-      );
+        );
+        await tester.pumpWidget(
+          host(const PaywallScreen(storeBuild: true), fake),
+        );
 
-      expect(find.byKey(PaywallScreen.payKey), findsNothing);
-      expect(find.text(S.payStore.text), findsOneWidget);
-    });
+        expect(find.byKey(PaywallScreen.payKey), findsOneWidget);
+        expect(find.byKey(PaywallScreen.restoreKey), findsOneWidget);
 
-    testWidgets('a direct build can pay and log out',
-        (WidgetTester tester) async {
+        await tapKey(tester, PaywallScreen.payKey);
+        expect(fake.calls, contains('storePurchase'));
+
+        await tapKey(tester, PaywallScreen.restoreKey);
+        expect(fake.calls, contains('storeRestore'));
+      },
+    );
+
+    testWidgets('a direct build can pay and log out', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.paywall,
@@ -397,8 +425,9 @@ void main() {
   });
 
   group('account screen', () {
-    testWidgets('hides the admin area for an ordinary member',
-        (WidgetTester tester) async {
+    testWidgets('hides the admin area for an ordinary member', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.ready,
@@ -412,8 +441,9 @@ void main() {
       expect(find.text(S.adminOpen.text), findsNothing);
     });
 
-    testWidgets('shows the admin area for an administrator',
-        (WidgetTester tester) async {
+    testWidgets('shows the admin area for an administrator', (
+      WidgetTester tester,
+    ) async {
       final FakeMembership fake = FakeMembership(
         MembershipState(
           phase: AuthPhase.ready,
@@ -425,11 +455,37 @@ void main() {
 
       expect(find.byKey(AccountScreen.adminEntryKey), findsOneWidget);
     });
+
+    testWidgets('store builds offer subscription management and restore', (
+      WidgetTester tester,
+    ) async {
+      final FakeMembership fake = FakeMembership(
+        MembershipState(
+          phase: AuthPhase.ready,
+          email: 'member@example.org',
+          entitlement: entitlement(),
+        ),
+      );
+      await tester.pumpWidget(
+        host(const AccountScreen(storeBuild: true), fake),
+      );
+
+      expect(find.byKey(AccountScreen.manageStoreKey), findsOneWidget);
+      expect(find.byKey(AccountScreen.restoreStoreKey), findsOneWidget);
+      expect(find.byKey(AccountScreen.cancelKey), findsNothing);
+
+      await tapKey(tester, AccountScreen.manageStoreKey);
+      expect(fake.calls, contains('storeCustomerCenter'));
+
+      await tapKey(tester, AccountScreen.restoreStoreKey);
+      expect(fake.calls, contains('storeRestore'));
+    });
   });
 
   group('temporary password dialog', () {
-    testWidgets('shows the password once and forgets it when closed',
-        (WidgetTester tester) async {
+    testWidgets('shows the password once and forgets it when closed', (
+      WidgetTester tester,
+    ) async {
       const String secret = 'Zx9-tmp-Pass';
       final List<MethodCall> platformCalls = <MethodCall>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -440,8 +496,10 @@ void main() {
         },
       );
       addTearDown(
-        () => tester.binding.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null),
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
       );
 
       await tester.pumpWidget(
@@ -486,8 +544,9 @@ void main() {
       expect(find.byType(TemporaryPasswordDialog), findsNothing);
     });
 
-    testWidgets('cannot be dismissed by tapping outside',
-        (WidgetTester tester) async {
+    testWidgets('cannot be dismissed by tapping outside', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData.dark(),

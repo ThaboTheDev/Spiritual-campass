@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_providers.dart';
@@ -8,6 +11,7 @@ import '../../core/config/app_config.dart';
 import '../../data/local/preferences_store.dart';
 import 'membership_api.dart';
 import 'membership_models.dart';
+import 'revenuecat_billing.dart';
 import 'session_store.dart';
 
 /// Every screen the gate can show, in the order a new member meets them.
@@ -61,6 +65,7 @@ enum MembershipError {
   alreadySubscribed,
   cancelFailed,
   openFailed,
+  storeBillingFailed,
 }
 
 /// Everything the gate and the account screen need.
@@ -179,6 +184,7 @@ class MembershipController extends Notifier<MembershipState> {
   MembershipApiClient get _api => ref.read(membershipApiClientProvider);
   SessionStore get _sessions => ref.read(sessionStoreProvider);
   PreferencesStore get _prefs => ref.read(preferencesStoreProvider);
+  RevenueCatBilling get _revenueCat => ref.read(revenueCatBillingProvider);
 
   AuthSession? _session;
 
@@ -213,10 +219,7 @@ class MembershipController extends Notifier<MembershipState> {
     if (state.busy) {
       return;
     }
-    state = state.copyWith(
-      mode: mode,
-      error: MembershipError.none,
-    );
+    state = state.copyWith(mode: mode, error: MembershipError.none);
   }
 
   /// `POST /auth/v1/token?grant_type=password`, then `/api/me`.
@@ -239,7 +242,10 @@ class MembershipController extends Notifier<MembershipState> {
       email: trimmed,
     );
     try {
-      final AuthSession session = await _auth.signInWithPassword(trimmed, password);
+      final AuthSession session = await _auth.signInWithPassword(
+        trimmed,
+        password,
+      );
       await _adoptSession(session);
       await refreshEntitlement();
     } on MembershipOffline {
@@ -277,10 +283,7 @@ class MembershipController extends Notifier<MembershipState> {
       final SignUpResult result = await _auth.signUp(trimmed, password);
       final AuthSession? session = result.session;
       if (session == null) {
-        state = state.copyWith(
-          busy: false,
-          error: MembershipError.authFailed,
-        );
+        state = state.copyWith(busy: false, error: MembershipError.authFailed);
         return;
       }
       await _adoptSession(session);
@@ -297,6 +300,18 @@ class MembershipController extends Notifier<MembershipState> {
   /// The per-account "trial page seen" flags stay: they are keyed by user id,
   /// so the page still shows once per account, not once per install.
   Future<void> signOut() async {
+    if (kStoreBuild) {
+      try {
+        await _revenueCat.logOut();
+      } on PlatformException catch (error, stackTrace) {
+        developer.log(
+          'RevenueCat logout failed; clearing the local membership session.',
+          name: 'membership',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
     _session = null;
     await _sessions.clear();
     await _prefs.saveCachedEntitlementJson(null);
@@ -331,8 +346,10 @@ class MembershipController extends Notifier<MembershipState> {
       await _api.changePassword(token, newPassword);
       // The old session may be revoked by the password change, so get a new
       // one straight away rather than waiting for the next 401.
-      final AuthSession session =
-          await _auth.signInWithPassword(state.email, newPassword);
+      final AuthSession session = await _auth.signInWithPassword(
+        state.email,
+        newPassword,
+      );
       await _adoptSession(session);
       state = state.copyWith(busy: false, passwordChanged: true);
       await refreshEntitlement();
@@ -378,8 +395,9 @@ class MembershipController extends Notifier<MembershipState> {
     }
     try {
       final String token = await _freshAccessToken();
-      final (Entitlement entitlement, Map<String, dynamic> raw) =
-          await _api.me(token);
+      final (Entitlement entitlement, Map<String, dynamic> raw) = await _api.me(
+        token,
+      );
       await _prefs.saveCachedEntitlementJson(
         jsonEncode(entitlement.toCacheJson(raw)),
       );
@@ -412,9 +430,9 @@ class MembershipController extends Notifier<MembershipState> {
 
   /// Re-check used by the app-resume hook and the periodic timer.
   Future<void> recheckAccess() => refreshEntitlement(
-        afterPayment: state.awaitingPayment,
-        silent: !state.awaitingPayment,
-      );
+    afterPayment: state.awaitingPayment,
+    silent: !state.awaitingPayment,
+  );
 
   /// "Start using the app" on the trial page.
   Future<void> acknowledgeTrialIntro() async {
@@ -433,8 +451,9 @@ class MembershipController extends Notifier<MembershipState> {
     bool afterPayment = false,
     MembershipError error = MembershipError.none,
   }) {
-    final bool access =
-        fromCache ? entitlement.cachedAccessValid() : entitlement.access;
+    final bool access = fromCache
+        ? entitlement.cachedAccessValid()
+        : entitlement.access;
     state = state.copyWith(
       phase: _phaseFor(entitlement, fromCache: fromCache),
       entitlement: entitlement,
@@ -460,7 +479,8 @@ class MembershipController extends Notifier<MembershipState> {
       // over — we ask for a connection instead.
       return fromCache ? AuthPhase.offlineLocked : AuthPhase.paywall;
     }
-    if (e.state == EntitlementState.trial && !_prefs.trialIntroSeen(_trialIntroKey)) {
+    if (e.state == EntitlementState.trial &&
+        !_prefs.trialIntroSeen(_trialIntroKey)) {
       return AuthPhase.trialIntro;
     }
     return AuthPhase.ready;
@@ -543,6 +563,126 @@ class MembershipController extends Notifier<MembershipState> {
     }
   }
 
+  /// Shows the dashboard-configured RevenueCat paywall. The store purchase
+  /// only prompts a server entitlement refresh; it never grants local access.
+  Future<void> startStorePurchase() async {
+    if (!kStoreBuild || _session == null || state.busy) {
+      return;
+    }
+    state = state.copyWith(busy: true, error: MembershipError.none);
+    try {
+      final PaywallResult result = await _revenueCat.presentPaywall(
+        _session!.userId,
+      );
+      if (result == PaywallResult.purchased ||
+          result == PaywallResult.restored) {
+        await refreshEntitlement(afterPayment: true);
+      } else if (result == PaywallResult.error) {
+        state = state.copyWith(
+          busy: false,
+          error: MembershipError.storeBillingFailed,
+        );
+      } else {
+        state = state.copyWith(busy: false);
+      }
+    } on PlatformException catch (error, stackTrace) {
+      developer.log(
+        'RevenueCat paywall failed.',
+        name: 'membership',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        busy: false,
+        error: MembershipError.storeBillingFailed,
+      );
+    } on StateError catch (error, stackTrace) {
+      developer.log(
+        'RevenueCat configuration is incomplete.',
+        name: 'membership',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        busy: false,
+        error: MembershipError.storeBillingFailed,
+      );
+    }
+  }
+
+  /// Restores purchases through the store, then asks the API to re-check.
+  Future<void> restoreStorePurchases() async {
+    if (!kStoreBuild || _session == null || state.busy) {
+      return;
+    }
+    state = state.copyWith(busy: true, error: MembershipError.none);
+    try {
+      final bool hasEntitlement = await _revenueCat.restorePurchases(
+        _session!.userId,
+      );
+      await refreshEntitlement(afterPayment: hasEntitlement);
+    } on PlatformException catch (error, stackTrace) {
+      developer.log(
+        'RevenueCat restore purchases failed.',
+        name: 'membership',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        busy: false,
+        error: MembershipError.storeBillingFailed,
+      );
+    } on StateError catch (error, stackTrace) {
+      developer.log(
+        'RevenueCat configuration is incomplete.',
+        name: 'membership',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        busy: false,
+        error: MembershipError.storeBillingFailed,
+      );
+    }
+  }
+
+  /// Opens RevenueCat Customer Center for cancellation and subscription
+  /// management, then re-reads the server-authoritative membership state.
+  Future<void> openStoreCustomerCenter() async {
+    if (!kStoreBuild || _session == null || state.busy) {
+      return;
+    }
+    state = state.copyWith(busy: true, error: MembershipError.none);
+    try {
+      final bool hasEntitlement = await _revenueCat.presentCustomerCenter(
+        _session!.userId,
+      );
+      await refreshEntitlement(afterPayment: hasEntitlement);
+    } on PlatformException catch (error, stackTrace) {
+      developer.log(
+        'RevenueCat Customer Center failed.',
+        name: 'membership',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        busy: false,
+        error: MembershipError.storeBillingFailed,
+      );
+    } on StateError catch (error, stackTrace) {
+      developer.log(
+        'RevenueCat configuration is incomplete.',
+        name: 'membership',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        busy: false,
+        error: MembershipError.storeBillingFailed,
+      );
+    }
+  }
+
   /// "Cancel subscription": first tap asks for confirmation, second cancels.
   /// Access is kept until the paid month ends — the server says until when.
   Future<void> cancelSubscription() async {
@@ -559,8 +699,8 @@ class MembershipController extends Notifier<MembershipState> {
     state = state.copyWith(busy: true, error: MembershipError.none);
     try {
       final String token = await _freshAccessToken();
-      final (Entitlement entitlement, Map<String, dynamic> raw) =
-          await _api.cancel(token);
+      final (Entitlement entitlement, Map<String, dynamic> raw) = await _api
+          .cancel(token);
       await _prefs.saveCachedEntitlementJson(
         jsonEncode(entitlement.toCacheJson(raw)),
       );
@@ -654,13 +794,13 @@ class MembershipController extends Notifier<MembershipState> {
   }
 
   static MembershipError _authError(AuthErrorKind kind) => switch (kind) {
-        AuthErrorKind.invalidCredentials => MembershipError.invalidCredentials,
-        AuthErrorKind.alreadyRegistered => MembershipError.alreadyRegistered,
-        AuthErrorKind.weakPassword => MembershipError.weakPassword,
-        AuthErrorKind.rateLimited => MembershipError.rateLimited,
-        AuthErrorKind.offline => MembershipError.offline,
-        AuthErrorKind.server || AuthErrorKind.unknown => MembershipError.authFailed,
-      };
+    AuthErrorKind.invalidCredentials => MembershipError.invalidCredentials,
+    AuthErrorKind.alreadyRegistered => MembershipError.alreadyRegistered,
+    AuthErrorKind.weakPassword => MembershipError.weakPassword,
+    AuthErrorKind.rateLimited => MembershipError.rateLimited,
+    AuthErrorKind.offline => MembershipError.offline,
+    AuthErrorKind.server || AuthErrorKind.unknown => MembershipError.authFailed,
+  };
 }
 
 class _SignedOut implements Exception {
@@ -673,11 +813,15 @@ final Provider<SupabaseAuthClient> supabaseAuthClientProvider =
 final Provider<MembershipApiClient> membershipApiClientProvider =
     Provider<MembershipApiClient>((ref) => MembershipApiClient());
 
-final Provider<SessionStore> sessionStoreProvider =
-    Provider<SessionStore>((ref) => const SecureSessionStore());
+final Provider<SessionStore> sessionStoreProvider = Provider<SessionStore>(
+  (ref) => const SecureSessionStore(),
+);
+
+final Provider<RevenueCatBilling> revenueCatBillingProvider =
+    Provider<RevenueCatBilling>((ref) => RevenueCatBilling());
 
 final NotifierProvider<MembershipController, MembershipState>
-    membershipControllerProvider =
+membershipControllerProvider =
     NotifierProvider<MembershipController, MembershipState>(
-  MembershipController.new,
-);
+      MembershipController.new,
+    );

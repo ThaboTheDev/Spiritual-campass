@@ -14,7 +14,11 @@ import '../membership_controller.dart';
 /// Portrait, scrollable (so it still fits a 320 dp phone at 1.3× text scale)
 /// and centred on wide screens, exactly like every other screen.
 class AuthScaffold extends StatelessWidget {
-  const AuthScaffold({super.key, required this.children, this.showHeader = true});
+  const AuthScaffold({
+    super.key,
+    required this.children,
+    this.showHeader = true,
+  });
 
   /// Content under the header.
   final List<Widget> children;
@@ -109,11 +113,12 @@ class _PasswordFieldState extends State<PasswordField> {
         isDense: true,
         suffixIcon: IconButton(
           icon: Icon(
-            _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            _obscure
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
             size: 20,
           ),
-          tooltip:
-              _obscure ? S.authShowPassword.text : S.authHidePassword.text,
+          tooltip: _obscure ? S.authShowPassword.text : S.authHidePassword.text,
           onPressed: () => setState(() => _obscure = !_obscure),
         ),
       ),
@@ -155,6 +160,8 @@ Bi? membershipErrorText(MembershipError error) {
       return S.payActive;
     case MembershipError.cancelFailed:
       return S.payCancelFail;
+    case MembershipError.storeBillingFailed:
+      return S.storeBillingFailed;
   }
 }
 
@@ -202,10 +209,10 @@ class AuthNote extends StatelessWidget {
     return LocalizedText(
       text,
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textMuted,
-            fontSize: 12.5,
-            height: 1.45,
-          ),
+        color: AppColors.textMuted,
+        fontSize: 12.5,
+        height: 1.45,
+      ),
     );
   }
 }

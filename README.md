@@ -186,7 +186,7 @@ Added with the sensor ladder:
 | `test/data/centres_repository_test.dart`, `test/data/towns_repository_test.dart` | `GET /api/centres` parsing, sorting, grouping and the offline cache (mock `http.Client`); towns parsing, search and filtering |
 | `test/features/membership/auth_client_test.dart` | Supabase Auth error mapping (every GoTrue shape), sign-up returning the session, 4xx refresh, `/api/*` error codes |
 | `test/features/membership/membership_gate_test.dart` | The gate state machine: first run, trial page once per account, paywall, `403 password_change_required`, 401 sign-out, offline cache allowed / denied, access ending mid-session |
-| `test/features/membership/membership_widgets_test.dart` | Login validation, forced change has no back path (`PopScope`), store builds hide "Pay now", admin entry hidden for non-admins, the temporary password is gone once the dialog closes |
+| `test/features/membership/membership_widgets_test.dart` | Login validation, forced change has no back path (`PopScope`), RevenueCat store purchase and management controls, admin entry hidden for non-admins, the temporary password is gone once the dialog closes |
 | `test/features/membership/admin_controller_test.dart` | Admin search / add centre / generate password / delete user, including `admin_required`, `duplicate_centre`, `invalid_centre` fields and `cannot_delete_self` |
 | `test/core/performance_profile_test.dart` | Profile detection and the Simple-mode override |
 | `test/widgets/language_button_test.dart` | The header language button: visible on every screen, opens the sheet, applies and persists the choice, and every label follows it |
@@ -234,8 +234,15 @@ flutter build appbundle --release
 #   --dart-define=SUPABASE_URL=https://<project>.supabase.co
 #   --dart-define=SUPABASE_ANON_KEY=<anon key>
 # Optional:
-#   --dart-define=STORE_BUILD=true               hide every purchase control
+#   --dart-define=STORE_BUILD=true               use RevenueCat, not PayFast
+#   --dart-define=REVENUECAT_API_KEY=<public platform SDK key>
+#   --dart-define=REVENUECAT_ENTITLEMENT_ID=test_pro
 ```
+
+See [RevenueCat store setup](./revenuecat-backend-integration.md) for test
+and production keys, products, offering/paywall configuration, and the
+required membership API/webhook changes. The `test_` API key is for RevenueCat
+Test Store only; use the public iOS or Android SDK key for store builds.
 
 Release builds use R8 minification and resource shrinking (rules in
 `android/app/proguard-rules.pro`), `minSdk 24` (Android 7.0) and only the two
@@ -409,9 +416,10 @@ Rules the gate keeps:
 * Access is re-checked when the app resumes and every 15 minutes. If it ends
   mid-session the compass is stopped, any pushed screen is popped and the
   paywall takes over.
-* Paying opens the signed PayFast page in the external browser (R100/month);
-  coming back, `/api/me` is polled. Cancelling keeps access until the paid
-  month ends. All of it is hidden when `kStoreBuild` is true.
+* Direct builds open the signed PayFast page in the external browser. Store
+  builds use the RevenueCat paywall and Customer Center. After either flow,
+  `/api/me` remains authoritative and is refreshed; cancellation keeps access
+  until the paid-through date reported by the server.
 
 **No e-mail confirmation, no password recovery.** Creating an account signs the
 member in immediately (`POST /auth/v1/signup` answers with a session), and the
@@ -447,9 +455,9 @@ whenever the server answers 401 or 402.
 * Trials are per account, so a new e-mail address starts a new trial. The
   server can tighten this (device / payment fingerprinting) if it matters.
 * Apple and Google require their own in-app purchase for digital goods. Build
-  store releases with `--dart-define=STORE_BUILD=true`: that hides every
-  purchase control (including the trial page's "Pay now"), leaving sign-in and
-  status only. PayFast is for the sideloaded / direct build.
+  store releases with `--dart-define=STORE_BUILD=true` and a public
+  platform-specific RevenueCat SDK key. This enables RevenueCat purchases and
+  management; PayFast remains available in direct builds only.
 * The temporary-password dialog is not screenshot-proof (see "Could not be
   verified").
 * Logging out keeps the per-account "trial page seen" flag, so the page does
@@ -461,7 +469,9 @@ whenever the server answers 401 or 402.
 
 | Flag | Default | Effect |
 | --- | --- | --- |
-| `kStoreBuild` (`--dart-define=STORE_BUILD`) | `false` | Hides every purchase / subscribe / cancel control; sign-in and status remain |
+| `kStoreBuild` (`--dart-define=STORE_BUILD`) | `false` | Uses RevenueCat paywalls, restore and Customer Center in store builds; direct builds retain PayFast |
+| `REVENUECAT_API_KEY` | empty | Public RevenueCat SDK key; pass a Test Store key for testing or the matching iOS / Android key for store builds |
+| `REVENUECAT_ENTITLEMENT_ID` | `test_pro` | RevenueCat entitlement that represents membership access |
 | `MEMBERSHIP_API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` | placeholders | Required at build time; see `lib/core/config/app_config.dart`. Nothing secret is committed — the anon key is a build argument |
 
 ---
@@ -508,9 +518,11 @@ whenever the server answers 401 or 402.
 `flutter_compass` (fused heading), `sensors_plus` (raw sensors, level bubble),
 `wakelock_plus` (screen on), `device_info_plus` (performance profile),
 `flutter_map` + `latlong2` + `flutter_map_marker_cluster` (map), `url_launcher`
-(directions/calls/PayFast), `shared_preferences` (settings), `flutter_secure_storage`
-+ `http` (session tokens, membership API and the centres cache), `google_fonts` (bundled
-Source Serif 4 + IBM Plex Sans/Mono, no runtime fetching).
+(directions/calls/PayFast), `purchases_flutter` + `purchases_ui_flutter`
+(RevenueCat store billing, paywalls and Customer Center), `shared_preferences`
+(settings), `flutter_secure_storage` + `http` (session tokens, membership API
+and the centres cache), `google_fonts` (bundled Source Serif 4 + IBM Plex
+Sans/Mono, no runtime fetching).
 
 Riverpod is pinned to the 2.x line (`^2.6.1`) because that is the API the code
 was written against. If you upgrade to Riverpod 3, the only changes needed are

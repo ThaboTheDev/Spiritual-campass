@@ -31,8 +31,9 @@ class TrialIntroScreen extends ConsumerWidget {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final MembershipState m = ref.watch(membershipControllerProvider);
-    final MembershipController c =
-        ref.read(membershipControllerProvider.notifier);
+    final MembershipController c = ref.read(
+      membershipControllerProvider.notifier,
+    );
     final Entitlement? e = m.entitlement;
     final int trialDays = e?.trialDays ?? 7;
     final int daysLeft = e?.daysLeft() ?? trialDays;
@@ -87,7 +88,19 @@ class TrialIntroScreen extends ConsumerWidget {
           onPressed: m.busy ? null : c.acknowledgeTrialIntro,
           expand: true,
         ),
-        if (!storeBuild) ...<Widget>[
+        if (storeBuild) ...<Widget>[
+          const SizedBox(height: 12),
+          const AuthNote(S.storePlans),
+          const SizedBox(height: 8),
+          AppButton(
+            key: TrialIntroScreen.payKey,
+            label: S.storePlans,
+            icon: Icons.shopping_bag_outlined,
+            variant: AppButtonVariant.outlined,
+            onPressed: m.busy ? null : c.startStorePurchase,
+            expand: true,
+          ),
+        ] else ...<Widget>[
           const SizedBox(height: 12),
           AuthNote(S.trialOffer(trialDays, e?.priceLabel ?? 'R100')),
           const SizedBox(height: 8),
