@@ -105,7 +105,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 ),
                 if (m.fromCache) ...<Widget>[
                   const SizedBox(height: 12),
-                  InfoBanner(
+                  const InfoBanner(
                     message: S.pwOffline,
                     icon: Icons.wifi_off_outlined,
                     color: AppColors.warning,

@@ -71,11 +71,11 @@ abstract final class NavigationLauncher {
   static Future<bool> _launch(Uri uri) async {
     try {
       if (await canLaunchUrl(uri)) {
-        return launchUrl(uri, mode: LaunchMode.externalApplication);
+        return await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
       // Some schemes are not reported as launchable; try anyway so the platform
       // can offer its own picker.
-      return launchUrl(uri, mode: LaunchMode.externalApplication);
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       return false;
     }

@@ -35,7 +35,7 @@ class _TestVector {
 }
 
 /// Fields: decimal year, altitude (km), lat, lon, D, I, H, X, Y, Z, F.
-const List<_TestVector> kNoaaTestVectors = <_TestVector>[
+const List<_TestVector> _noaaTestVectors = <_TestVector>[
   _TestVector(2025.0, 28, 89, -121, -99.77, 88.47, 1504.298146, -255.388723,
       -1482.460628, 56194.288771, 56214.419888),
   _TestVector(2025.0, 65, 43, 93, 0.50, 64.10, 24300.764692, 24299.852822,
@@ -60,7 +60,7 @@ const List<_TestVector> kNoaaTestVectors = <_TestVector>[
 
 void main() {
   group('WMM2025 against NOAA test values', () {
-    for (final _TestVector vector in kNoaaTestVectors) {
+    for (final _TestVector vector in _noaaTestVectors) {
       test('lat ${vector.latitude}, lon ${vector.longitude} @ ${vector.year}',
           () {
         final MagneticField field = Wmm2025.fieldAtDecimalYear(
@@ -129,7 +129,7 @@ void main() {
           when: DateTime.utc(2026, 6, 1),
         );
         expect(declination, lessThan(0),
-            reason: 'magnetic north is west of true north at ${point}');
+            reason: 'magnetic north is west of true north at $point');
         expect(
           declination.abs() >= 17.0 && declination.abs() <= 28.0,
           isTrue,

@@ -6,9 +6,9 @@ import '../../../core/geo/geo_math.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/sun/sun_position.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
+import '../../../widgets/localized_text.dart';
 
 /// Rung 5, "Sun guidance": how to face Ekuphumuleni with no heading sensor.
 ///

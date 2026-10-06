@@ -158,10 +158,9 @@ First run notes:
   motion & orientation; Android asks for location (fine + coarse together).
 * On a simulator the compass reports no sensor. The app keeps working: true
   bearing, magnetic bearing, distance and declination are still shown.
-* `google_fonts` downloads Source Serif 4 / IBM Plex Sans the first time it
-  paints and caches them. Offline it falls back to the platform font, so text
-  still renders. To be fully offline from the first launch, bundle the fonts and
-  drop `google_fonts` (see "Notes" below).
+* Source Serif 4 and IBM Plex are bundled in `assets/fonts/`, and runtime font
+  fetching is disabled. The app therefore uses its intended fonts offline,
+  including on first launch.
 
 ---
 
@@ -212,12 +211,13 @@ keyAlias=tshk
 EOF
 ```
 
-Then replace the `signingConfig = signingConfigs.debug` line in
-`android/app/build.gradle` with a real `signingConfigs { release { … } }` block
-(the standard Flutter snippet), and build:
+The release build requires a private signing key. The build reads it from the
+ignored `android/key.properties` file; it refuses to build a release without
+that file rather than signing with the debug key. Use the exact path
+`android/app/build.gradle.kts` for any Gradle Kotlin DSL changes.
 
 ```bash
-# Fonts once (bundled; no runtime download):
+# Optional: refresh bundled fonts if their source files are updated.
 bash tool/fetch_fonts.sh
 
 # Per-ABI APKs for sideloading on low-storage phones (arm64-v8a, armeabi-v7a):
@@ -244,13 +244,13 @@ ARM ABIs. The iOS deployment target is 13.0.
 ### iOS (macOS + Xcode)
 
 ```bash
-flutter build ipa --release \
-  --export-options-plist=ios/ExportOptions.plist
+flutter build ipa --release
 ```
 
 Or archive from Xcode: open `ios/Runner.xcworkspace`, select **Any iOS Device
 (arm64)**, *Product ▸ Archive*, then *Distribute App*. You need an Apple
-Developer team, a bundle identifier and a signing certificate.
+Developer team, a bundle identifier and a signing certificate. Configure
+export options for your team if using a custom distribution method.
 
 Before shipping, bump `version:` in `pubspec.yaml` (e.g. `1.0.1+2`).
 
@@ -524,16 +524,13 @@ required by the OSM tile usage policy. For heavy traffic switch the URL in
 
 ## Could not be verified in this environment
 
-* No Flutter SDK was available where the code was written: the Dart files were
-  cross-checked by hand but **not compiled or run**. Run `flutter pub get`,
-  `flutter analyze` and `flutter test` first.
+* The Flutter test suite and static analysis have been run in this workspace;
+  device behavior and production-service integration still need verification.
 * The 88 centre coordinates and the town coordinates are as supplied.
 * The first 116 keys of `translations.json` are as supplied. The remaining
   keys (every other screen, message and label) were translated for this build
   and need a fluent speaker's review — especially Chichewa and Bemba — as do
   the isiZulu strings written for the sensor ladder, settings and membership.
-* Fonts are not committed; `tool/fetch_fonts.sh` downloads them (release URLs
-  may need updating).
 * Behaviour on specific low-end phones (Android 7 / 1 GB, iPhone 6s) and the
   sensors_plus axis conventions on iOS were reasoned from documentation only.
 * The membership API is implemented from the contract, not against a live

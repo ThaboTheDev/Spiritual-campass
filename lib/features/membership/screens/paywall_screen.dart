@@ -89,7 +89,7 @@ class PaywallScreen extends ConsumerWidget {
               ],
               if (m.awaitingPayment) ...<Widget>[
                 const SizedBox(height: 12),
-                InfoBanner(
+                const InfoBanner(
                   message: S.paySlow,
                   icon: Icons.hourglass_bottom,
                   color: AppColors.warning,
@@ -122,13 +122,13 @@ class PaywallScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        SectionCard(
+        const SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const AuthHeading(S.trialWhat),
-              const SizedBox(height: 12),
-              const FeatureList(),
+              AuthHeading(S.trialWhat),
+              SizedBox(height: 12),
+              FeatureList(),
             ],
           ),
         ),

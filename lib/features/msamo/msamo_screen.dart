@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/l10n/strings.dart';
-import '../../app_providers.dart';
 import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
+import '../../widgets/localized_text.dart';
 import '../compass/compass_controller.dart';
 import '../compass/compass_providers.dart';
 import '../compass/widgets/calibration_controls.dart';

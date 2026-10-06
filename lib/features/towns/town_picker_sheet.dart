@@ -5,8 +5,8 @@ import '../../core/l10n/strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/town.dart';
 import '../../data/repositories/towns_repository.dart';
-import '../../widgets/localized_text.dart';
 import '../../widgets/language_scope.dart';
+import '../../widgets/localized_text.dart';
 import 'towns_providers.dart';
 
 /// A searchable, grouped list of towns. Resolves with the chosen [Town] or

@@ -73,11 +73,12 @@ abstract class LocationRepository {
 /// geolocator-backed implementation of [LocationRepository].
 class GeolocatorLocationRepository implements LocationRepository {
   GeolocatorLocationRepository({
-    LocationSettings locationSettings = const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 5,
-    ),
-  }) : _locationSettings = locationSettings;
+    LocationSettings? locationSettings,
+  }) : _locationSettings = locationSettings ??
+            const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 5,
+            );
 
   final LocationSettings _locationSettings;
 

@@ -1,22 +1,24 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../core/geo/coordinates.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/l10n/strings.dart';
+import '../../core/perf/performance_profile.dart';
 import '../../core/sun/facing_sun.dart';
 import '../../core/sun/sun_position.dart';
-import '../../app_providers.dart';
-import '../../core/perf/performance_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/localized_text.dart';
 import '../../widgets/cards.dart';
 import '../../widgets/constrained_content.dart';
 import '../../widgets/language_scope.dart';
+import '../../widgets/localized_text.dart';
 import '../location/location_controller.dart';
 import 'compass_controller.dart';
 import 'compass_providers.dart';
@@ -42,16 +44,21 @@ class CompassScreen extends ConsumerWidget {
     final double? magneticBearing = ref.watch(magneticBearingProvider);
     final SunPosition? sun = ref.watch(sunPositionProvider).valueOrNull;
 
-    final double? heading = compass.trueHeadingDeg ?? compass.magneticHeadingDeg;
+    final double? heading =
+        compass.trueHeadingDeg ?? compass.magneticHeadingDeg;
     final bool hasTarget = target != null;
-    final bool aligned = hasTarget &&
+    final bool aligned =
+        hasTarget &&
         heading != null &&
         Angles.difference(heading, target.bearingDeg) <=
             CompassDial.alignmentToleranceDeg;
 
     final FacingSunResult facing = sun == null
         ? const FacingSunResult(
-            facing: SunFacing.unknown, deltaDeg: 0, hasHeading: false)
+            facing: SunFacing.unknown,
+            deltaDeg: 0,
+            hasHeading: false,
+          )
         : FacingSun.evaluate(headingDeg: heading, sun: sun);
 
     return SafeArea(
@@ -95,9 +102,8 @@ class CompassScreen extends ConsumerWidget {
                 targetBearing: target?.bearingDeg,
                 aligned: aligned,
                 simple: !perf.useGradients,
-                onStart: () => ref
-                    .read(compassControllerProvider.notifier)
-                    .start(),
+                onStart: () =>
+                    ref.read(compassControllerProvider.notifier).start(),
               ),
               const SizedBox(height: 16),
 
@@ -187,8 +193,8 @@ class CompassScreen extends ConsumerWidget {
                     caption: sun == null
                         ? null
                         : (sun.isAboveHorizon
-                            ? S.aboveHorizon.text
-                            : S.belowHorizon.text),
+                              ? S.aboveHorizon.text
+                              : S.belowHorizon.text),
                     icon: Icons.wb_sunny_outlined,
                   ),
                   ReadoutCard(
@@ -200,7 +206,9 @@ class CompassScreen extends ConsumerWidget {
                   if (sun != null && sun.castsShadow)
                     ReadoutCard(
                       label: S.stickShadow,
-                      value: Formatters.bearingWithCardinal(sun.shadowBearingDeg),
+                      value: Formatters.bearingWithCardinal(
+                        sun.shadowBearingDeg,
+                      ),
                       caption: S.shadowHint.text,
                       icon: Icons.north_east_outlined,
                     ),
@@ -237,8 +245,8 @@ class CompassScreen extends ConsumerWidget {
                     caption: declination == null
                         ? S.notSetHint.text
                         : (declination < 0
-                            ? S.declinationWest.text
-                            : S.declinationEast.text),
+                              ? S.declinationWest.text
+                              : S.declinationEast.text),
                     icon: Icons.swap_horiz_outlined,
                   ),
                   ReadoutCard(
@@ -248,8 +256,8 @@ class CompassScreen extends ConsumerWidget {
                         : '—',
                     caption: location.hasPoint
                         ? (location.isManual
-                            ? S.sourceManual.text
-                            : S.sourceGps.text)
+                              ? S.sourceManual.text
+                              : S.sourceGps.text)
                         : S.notSetHint.text,
                     icon: Icons.place_outlined,
                   ),
@@ -261,10 +269,10 @@ class CompassScreen extends ConsumerWidget {
                 child: LocalizedText(
                   S.compassHelp,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                 ),
               ),
 
@@ -296,7 +304,10 @@ class CompassScreen extends ConsumerWidget {
   }
 
   String _facingSunValue(
-      FacingSunResult facing, SunPosition? sun, double? heading) {
+    FacingSunResult facing,
+    SunPosition? sun,
+    double? heading,
+  ) {
     if (sun == null) {
       return '—';
     }
@@ -349,7 +360,6 @@ class _StatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     LanguageScope.watch(context);
-    final ThemeData theme = Theme.of(context);
     final GeoPoint? point = location.effectivePoint;
 
     final Bi locationText = point == null
@@ -365,33 +375,76 @@ class _StatusLine extends StatelessWidget {
       CompassStatus.running when compass.awaitingCalibration =>
         S.compassNeedsCal,
       CompassStatus.running when !compass.hasHeading => S.compassWaiting,
-      CompassStatus.running => compass.trueHeadingDeg != null
-          ? S.compassTrue(Formatters.bearing(compass.trueHeadingDeg))
-          : S.compassMagnetic(Formatters.bearing(compass.magneticHeadingDeg)),
+      CompassStatus.running =>
+        compass.trueHeadingDeg != null
+            ? S.compassTrue(Formatters.bearing(compass.trueHeadingDeg))
+            : S.compassMagnetic(Formatters.bearing(compass.magneticHeadingDeg)),
     };
 
     return SectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            locationText.text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 12.5,
+          _StatusItem(
+            icon: Icons.place_outlined,
+            color: AppColors.accent,
+            text: locationText.text,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Divider(
+              height: 1,
+              color: AppColors.border.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            compassText.text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 12.5,
-            ),
+          _StatusItem(
+            icon: Icons.explore_outlined,
+            color: AppColors.gold,
+            text: compassText.text,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatusItem extends StatelessWidget {
+  const _StatusItem({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 12.5,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -420,91 +473,121 @@ class _DialSection extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool active = compass.isRunning;
 
-    return Column(
-      children: <Widget>[
-        SizedBox(
-          height: 300,
-          child: Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                CompassDial(
-                  headingDeg: heading,
-                  targetBearingDeg: targetBearing,
-                  aligned: aligned,
-                  active: active,
-                  simple: simple,
-                  size: 288,
-                ),
-                if (!compass.isActive) ...<Widget>[
-                  Container(
-                    width: 288,
-                    height: 288,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.background.withValues(alpha: 0.55),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        gradient: simple
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[AppColors.surfaceAlt, AppColors.surface],
+              ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: aligned
+              ? AppColors.gold.withValues(alpha: 0.55)
+              : AppColors.border,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double dialSize = math
+              .min(constraints.maxWidth - 8, 288)
+              .clamp(0.0, 288.0)
+              .toDouble();
+          return Column(
+            children: <Widget>[
+              SizedBox(
+                width: dialSize,
+                height: dialSize,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    CompassDial(
+                      headingDeg: heading,
+                      targetBearingDeg: targetBearing,
+                      aligned: aligned,
+                      active: active,
+                      simple: simple,
+                      size: dialSize,
                     ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      LocalizedText(
-                        S.startToBegin,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: 190,
-                        child: AppButton(
-                          label: S.startCompass,
-                          icon: Icons.play_arrow_rounded,
-                          onPressed: onStart,
-                          expand: true,
+                    if (!compass.isActive) ...<Widget>[
+                      Container(
+                        width: dialSize,
+                        height: dialSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.background.withValues(alpha: 0.55),
                         ),
                       ),
-                    ],
-                  ),
-                ] else if (compass.status == CompassStatus.starting ||
-                    compass.paused) ...<Widget>[
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      const SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 22),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            LocalizedText(
+                              S.startToBegin,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: math.min(dialSize * 0.72, 190).toDouble(),
+                              child: AppButton(
+                                label: S.startCompass,
+                                icon: Icons.play_arrow_rounded,
+                                onPressed: onStart,
+                                expand: true,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      LocalizedText(
-                        S.waitingForHeading,
-                        style: theme.textTheme.bodySmall,
-                        textAlign: TextAlign.center,
+                    ] else if (compass.status == CompassStatus.starting ||
+                        compass.paused) ...<Widget>[
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const SizedBox(
+                            width: 26,
+                            height: 26,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
+                          const SizedBox(height: 10),
+                          LocalizedText(
+                            S.waitingForHeading,
+                            style: theme.textTheme.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        LocalizedText(
-          aligned
-              ? S.aligned
-              : (targetBearing == null
-                  ? S.notSetHint
-                  : S.bearingValue(
-                      Formatters.bearingWithCardinal(targetBearing),
-                    )),
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: aligned ? AppColors.gold : AppColors.textPrimary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              LocalizedText(
+                aligned
+                    ? S.aligned
+                    : (targetBearing == null
+                          ? S.notSetHint
+                          : S.bearingValue(
+                              Formatters.bearingWithCardinal(targetBearing),
+                            )),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: aligned ? AppColors.gold : AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -529,8 +612,7 @@ class _LocationHelpBanner extends ConsumerWidget {
       icon: Icons.location_off_outlined,
       color: AppColors.warning,
       actionLabel: S.openSettings,
-      onTap: () =>
-          ref.read(locationControllerProvider.notifier).openSettings(),
+      onTap: () => ref.read(locationControllerProvider.notifier).openSettings(),
     );
   }
 }

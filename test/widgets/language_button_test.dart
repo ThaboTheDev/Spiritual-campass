@@ -97,10 +97,10 @@ void main() {
     await tester.pumpWidget(
       host(
         LanguageScope(
-          child: Column(
+          child: const Column(
             children: <Widget>[
-              const AppHeader(showLogo: false),
-              const LocalizedText(S.tabGuide),
+              AppHeader(showLogo: false),
+              LocalizedText(S.tabGuide),
             ],
           ),
         ),

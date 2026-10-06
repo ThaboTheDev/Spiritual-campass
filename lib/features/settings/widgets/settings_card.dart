@@ -5,9 +5,9 @@ import '../../../app_providers.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/perf/performance_profile.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/localized_text.dart';
 import '../../../widgets/cards.dart';
 import '../../../widgets/language_scope.dart';
+import '../../../widgets/localized_text.dart';
 import '../language_controller.dart';
 
 /// Language switcher and the "Battery saver / Simple mode" switch.
