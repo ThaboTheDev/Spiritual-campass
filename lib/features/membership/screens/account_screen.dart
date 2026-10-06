@@ -26,13 +26,15 @@ class AccountScreen extends ConsumerStatefulWidget {
 
   static const Key adminEntryKey = Key('account.admin');
   static const Key cancelKey = Key('account.cancel');
+  static const Key manageStoreKey = Key('account.manageStore');
+  static const Key restoreStoreKey = Key('account.restoreStore');
   static const Key logOutKey = Key('account.logOut');
   static const Key changePasswordKey = Key('account.changePassword');
 
   /// Opens the screen as a full route.
-  static Future<void> open(BuildContext context) => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const AccountScreen()),
-      );
+  static Future<void> open(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()));
 
   @override
   ConsumerState<AccountScreen> createState() => _AccountScreenState();
@@ -55,8 +57,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     LanguageScope.watch(context);
     final ThemeData theme = Theme.of(context);
     final MembershipState m = ref.watch(membershipControllerProvider);
-    final MembershipController c =
-        ref.read(membershipControllerProvider.notifier);
+    final MembershipController c = ref.read(
+      membershipControllerProvider.notifier,
+    );
     final Entitlement? e = m.entitlement;
 
     return Scaffold(
@@ -81,15 +84,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       _Row(
                         label: S.accountStatusLabel,
                         value: _statusText(e, access: m.hasAccess).text,
-                        valueColor:
-                            m.hasAccess ? AppColors.success : AppColors.warning,
+                        valueColor: m.hasAccess
+                            ? AppColors.success
+                            : AppColors.warning,
                       ),
                       if (e?.endsAt != null) ...<Widget>[
                         const SizedBox(height: 10),
                         LocalizedText(
                           S.accountUntil(_date(e!.endsAt!)),
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: AppColors.textSecondary),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                       if (m.fromCache) ...<Widget>[
@@ -104,8 +109,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                               label: S.retry,
                               icon: Icons.refresh,
                               variant: AppButtonVariant.outlined,
-                              onPressed:
-                                  m.busy ? null : () => c.refreshEntitlement(),
+                              onPressed: m.busy
+                                  ? null
+                                  : () => c.refreshEntitlement(),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -117,7 +123,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           ),
                         ],
                       ),
-                      if (!widget.storeBuild && (e?.canCancel ?? false)) ...<Widget>[
+                      if (!widget.storeBuild &&
+                          (e?.canCancel ?? false)) ...<Widget>[
                         const SizedBox(height: 4),
                         AppButton(
                           key: AccountScreen.cancelKey,
@@ -128,6 +135,26 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           color: AppColors.danger,
                           foregroundColor: AppColors.danger,
                           onPressed: m.busy ? null : c.cancelSubscription,
+                        ),
+                      ],
+                      if (widget.storeBuild) ...<Widget>[
+                        const SizedBox(height: 4),
+                        AppButton(
+                          key: AccountScreen.manageStoreKey,
+                          label: S.storeManage,
+                          icon: Icons.manage_accounts_outlined,
+                          variant: AppButtonVariant.outlined,
+                          onPressed: m.busy ? null : c.openStoreCustomerCenter,
+                          expand: true,
+                        ),
+                        const SizedBox(height: 4),
+                        AppButton(
+                          key: AccountScreen.restoreStoreKey,
+                          label: S.storeRestore,
+                          icon: Icons.restore,
+                          variant: AppButtonVariant.text,
+                          onPressed: m.busy ? null : c.restoreStorePurchases,
+                          expand: true,
                         ),
                       ],
                       if (m.cancelledNotice) ...<Widget>[
@@ -188,9 +215,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           onPressed: m.busy
                               ? null
                               : () => c.changePassword(
-                                    _password.text,
-                                    _confirmation.text,
-                                  ),
+                                  _password.text,
+                                  _confirmation.text,
+                                ),
                           expand: true,
                         ),
                         AppButton(
@@ -199,10 +226,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           onPressed: m.busy
                               ? null
                               : () => setState(() {
-                                    _changing = false;
-                                    _password.clear();
-                                    _confirmation.clear();
-                                  }),
+                                  _changing = false;
+                                  _password.clear();
+                                  _confirmation.clear();
+                                }),
                         ),
                       ],
                       if (m.passwordChanged) ...<Widget>[
@@ -229,8 +256,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     semanticLabel: S.adminOpen.text,
                     child: Row(
                       children: <Widget>[
-                        const Icon(Icons.admin_panel_settings_outlined,
-                            color: AppColors.accent),
+                        const Icon(
+                          Icons.admin_panel_settings_outlined,
+                          color: AppColors.accent,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -245,8 +274,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right,
-                            color: AppColors.textMuted),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: AppColors.textMuted,
+                        ),
                       ],
                     ),
                   ),
